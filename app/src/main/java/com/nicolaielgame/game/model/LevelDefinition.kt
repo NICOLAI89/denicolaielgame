@@ -51,7 +51,7 @@ object LevelCatalog {
                 buildLockedCells = locked,
                 scenicPath = scenicPath,
             ),
-            startingGold = 130,
+            startingGold = 145,
             startingLives = 20,
             waves = listOf(
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 7)), spawnInterval = 0.86f),
@@ -87,7 +87,7 @@ object LevelCatalog {
                 buildLockedCells = locked,
                 scenicPath = scenicPath,
             ),
-            startingGold = 150,
+            startingGold = 160,
             startingLives = 18,
             waves = listOf(
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 8), WaveEnemyGroup(EnemyType.Fast, 4)), spawnInterval = 0.76f),
@@ -128,14 +128,14 @@ object LevelCatalog {
                 buildLockedCells = locked,
                 scenicPath = scenicPath,
             ),
-            startingGold = 170,
+            startingGold = 185,
             startingLives = 16,
             waves = listOf(
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 10), WaveEnemyGroup(EnemyType.Normal, 6)), spawnInterval = 0.62f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Tank, 4), WaveEnemyGroup(EnemyType.Fast, 8)), spawnInterval = 0.66f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 12), WaveEnemyGroup(EnemyType.Tank, 5)), spawnInterval = 0.58f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 14), WaveEnemyGroup(EnemyType.Tank, 5)), spawnInterval = 0.5f),
-                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 14), WaveEnemyGroup(EnemyType.Fast, 12), WaveEnemyGroup(EnemyType.Tank, 7)), spawnInterval = 0.48f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 12), WaveEnemyGroup(EnemyType.Fast, 10), WaveEnemyGroup(EnemyType.Tank, 5), WaveEnemyGroup(EnemyType.Boss, 1)), spawnInterval = 0.5f),
             ),
         )
     }

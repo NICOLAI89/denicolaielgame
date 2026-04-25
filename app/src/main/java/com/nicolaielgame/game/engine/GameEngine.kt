@@ -2,6 +2,7 @@ package com.nicolaielgame.game.engine
 
 import com.nicolaielgame.game.model.Enemy
 import com.nicolaielgame.game.model.EnemyType
+import com.nicolaielgame.game.model.DifficultyMode
 import com.nicolaielgame.game.model.GameMap
 import com.nicolaielgame.game.model.GameState
 import com.nicolaielgame.game.model.GameStatus
@@ -25,9 +26,11 @@ import kotlin.math.sqrt
 
 class GameEngine(
     initialLevel: LevelDefinition = LevelCatalog.firstLevel,
+    initialDifficulty: DifficultyMode = DifficultyMode.Normal,
     private val soundPlayer: SoundPlayer = SilentSoundPlayer,
 ) {
     private var level = initialLevel
+    private var difficulty = initialDifficulty
     private var map = level.map
     private var pathFinder = PathFinder(map)
     private var waveManager = WaveManager(level.waves)
@@ -43,8 +46,10 @@ class GameEngine(
     fun reset(
         bestScore: Int = mutableState.value.bestScore,
         levelDefinition: LevelDefinition = level,
+        difficultyMode: DifficultyMode = difficulty,
     ) {
         level = levelDefinition
+        difficulty = difficultyMode
         map = level.map
         pathFinder = PathFinder(map)
         waveManager = WaveManager(level.waves)
@@ -53,7 +58,6 @@ class GameEngine(
         nextProjectileId = 1
         nextHitEffectId = 1
         mutableState.value = createInitialState(bestScore)
-        soundPlayer.waveStart()
     }
 
     fun setBestScore(bestScore: Int) {
@@ -151,11 +155,17 @@ class GameEngine(
     }
 
     fun startNextWave() {
+        if (mutableState.value.status != GameStatus.Running) return
         if (waveManager.startNextWave()) {
+            val snapshot = waveManager.snapshot(mutableState.value.enemies.size)
             mutableState.value = mutableState.value.copy(
-                placementMessage = "Wave ${waveManager.snapshot(mutableState.value.enemies.size).currentWave} started.",
+                placementMessage = if (snapshot.isBossWave) {
+                    "Boss wave ${snapshot.currentWave} started."
+                } else {
+                    "Wave ${snapshot.currentWave} started."
+                },
                 placementAccepted = true,
-                wave = waveManager.snapshot(mutableState.value.enemies.size),
+                wave = snapshot,
             )
             soundPlayer.waveStart()
         }
@@ -246,6 +256,7 @@ class GameEngine(
             placementMessage = "${type.shortLabel} placed. Enemies rerouted.",
             placementAccepted = true,
             gold = current.gold - type.baseCost,
+            towersPlacedByType = current.towersPlacedByType + (type to ((current.towersPlacedByType[type] ?: 0) + 1)),
         )
         soundPlayer.towerPlaced()
     }
@@ -265,7 +276,7 @@ class GameEngine(
             .map { it.copy(slowTimeRemaining = (it.slowTimeRemaining - delta).coerceAtLeast(0f)) }
             .toMutableList()
 
-        val spawnRequests = waveManager.update(delta, hasAliveEnemies = enemies.isNotEmpty())
+        val spawnRequests = waveManager.update(delta)
         for (enemyType in spawnRequests) {
             val path = pathFinder.findPath(blockedCells) ?: continue
             enemies += createEnemy(enemyType, path)
@@ -291,10 +302,23 @@ class GameEngine(
         enemies = applyProjectileHits(enemies, projectileResult.hitsByEnemyId).toMutableList()
 
         val survivingEnemies = mutableListOf<Enemy>()
+        val deathEffects = mutableListOf<HitEffect>()
+        var bossesDefeated = current.bossesDefeated
         for (enemy in enemies) {
             if (enemy.health <= 0f) {
                 gold += enemy.reward
                 score += enemy.scoreValue
+                if (enemy.type.isBoss) {
+                    bossesDefeated++
+                }
+                deathEffects += HitEffect(
+                    id = nextHitEffectId++,
+                    row = enemy.row,
+                    col = enemy.col,
+                    color = enemy.type.accentColor,
+                    label = "+${enemy.reward}",
+                    duration = if (enemy.type.isBoss) 0.8f else 0.48f,
+                )
                 soundPlayer.enemyDown()
             } else {
                 survivingEnemies += enemy
@@ -307,13 +331,14 @@ class GameEngine(
             enemies = enemies,
             deltaSeconds = delta,
         )
+        waveManager.completeWaveIfCleared(hasAliveEnemies = enemies.isNotEmpty())
 
         if (lives <= 0) {
             status = GameStatus.GameOver
             soundPlayer.gameOver()
         } else if (waveManager.isFinished && enemies.isEmpty()) {
             status = GameStatus.Victory
-            score += 250 + level.id * 75
+            score += difficulty.applyScore(250 + level.id * 75)
             gold += 50
             soundPlayer.victory()
         }
@@ -327,10 +352,11 @@ class GameEngine(
             towers = towerFireResult.towers,
             enemies = enemies,
             projectiles = projectileResult.projectiles + towerFireResult.projectiles,
-            hitEffects = agedHitEffects + projectileResult.hitEffects,
+            hitEffects = agedHitEffects + projectileResult.hitEffects + deathEffects,
             lives = lives.coerceAtLeast(0),
             gold = gold,
             score = score,
+            bossesDefeated = bossesDefeated,
             pathPreview = pathFinder.findPath(blockedCells).orEmpty(),
             wave = waveManager.snapshot(aliveEnemies = enemies.size),
         )
@@ -340,9 +366,10 @@ class GameEngine(
         return GameState(
             map = map,
             level = level,
+            difficulty = difficulty,
             bestScore = bestScore,
-            lives = level.startingLives,
-            gold = level.startingGold,
+            lives = difficulty.applyStartingLives(level.startingLives),
+            gold = difficulty.applyStartingGold(level.startingGold),
             selectedTowerType = TowerType.Basic,
             pathPreview = pathFinder.findPath(emptySet()).orEmpty(),
             wave = waveManager.snapshot(aliveEnemies = 0),
@@ -357,11 +384,11 @@ class GameEngine(
             col = map.spawn.col.toFloat(),
             path = path,
             pathIndex = nextPathIndex(path),
-            health = enemyType.maxHealth,
-            maxHealth = enemyType.maxHealth,
-            speed = enemyType.speed,
-            reward = enemyType.reward,
-            scoreValue = enemyType.scoreValue,
+            health = difficulty.applyEnemyHealth(enemyType.maxHealth),
+            maxHealth = difficulty.applyEnemyHealth(enemyType.maxHealth),
+            speed = difficulty.applyEnemySpeed(enemyType.speed),
+            reward = difficulty.applyReward(enemyType.reward),
+            scoreValue = difficulty.applyScore(enemyType.scoreValue),
         )
     }
 
@@ -462,6 +489,7 @@ class GameEngine(
                     row = target.row,
                     col = target.col,
                     color = projectile.towerType.accentColor,
+                    label = "-${projectile.damage.toInt()}",
                 )
                 soundPlayer.enemyHit()
             } else {

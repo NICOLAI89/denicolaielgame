@@ -1,13 +1,18 @@
 package com.nicolaielgame.game.rendering
 
+import android.graphics.Paint
+import android.graphics.Typeface
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import com.nicolaielgame.game.model.Enemy
 import com.nicolaielgame.game.model.GameMap
 import com.nicolaielgame.game.model.GameState
@@ -18,7 +23,7 @@ import kotlin.math.abs
 import kotlin.math.min
 
 class IsoRenderer(private val map: GameMap) {
-    fun draw(drawScope: DrawScope, state: GameState) = with(drawScope) {
+    fun draw(drawScope: DrawScope, state: GameState, showGrid: Boolean = true) = with(drawScope) {
         val layout = createLayout(size)
         drawRect(
             brush = Brush.verticalGradient(
@@ -28,7 +33,7 @@ class IsoRenderer(private val map: GameMap) {
 
         drawBoardShadow(layout)
         for (cell in map.cells.sortedWith(compareBy<GridCell> { it.row + it.col }.thenBy { it.row })) {
-            drawTile(cell, layout, state)
+            drawTile(cell, layout, state, showGrid)
         }
 
         state.rangePreview?.let { preview ->
@@ -78,6 +83,7 @@ class IsoRenderer(private val map: GameMap) {
         cell: GridCell,
         layout: IsoLayout,
         state: GameState,
+        showGrid: Boolean,
     ) {
         val center = cellCenter(cell, layout)
         val tile = diamondPath(center, layout.tileWidth, layout.tileHeight)
@@ -94,11 +100,13 @@ class IsoRenderer(private val map: GameMap) {
         }
 
         drawPath(tile, baseColor)
-        drawPath(
-            path = tile,
-            color = Color.White.copy(alpha = if (isPath) 0.22f else 0.1f),
-            style = Stroke(width = 1.4f),
-        )
+        if (showGrid || isPath || isSelected) {
+            drawPath(
+                path = tile,
+                color = Color.White.copy(alpha = if (isPath) 0.22f else 0.1f),
+                style = Stroke(width = 1.4f),
+            )
+        }
 
         if (isSelected) {
             drawPath(
@@ -198,6 +206,15 @@ class IsoRenderer(private val map: GameMap) {
             radius = h * 0.18f,
             center = Offset(center.x, center.y - h * 0.78f),
         )
+        val fireFlash = (tower.cooldown / tower.fireInterval).coerceIn(0f, 1f)
+        if (fireFlash > 0.72f) {
+            drawCircle(
+                color = tower.type.accentColor.copy(alpha = (fireFlash - 0.72f) * 2.8f),
+                radius = h * (0.18f + fireFlash * 0.16f),
+                center = Offset(center.x, center.y - h * 0.82f),
+                style = Stroke(width = 3f),
+            )
+        }
         repeat(tower.level.coerceAtMost(4)) { index ->
             drawCircle(
                 color = tower.type.accentColor,
@@ -212,7 +229,7 @@ class IsoRenderer(private val map: GameMap) {
 
     private fun DrawScope.drawEnemy(enemy: Enemy, layout: IsoLayout) {
         val center = gridToScreen(enemy.row, enemy.col, layout)
-        val radius = layout.tileHeight * 0.23f
+        val radius = layout.tileHeight * 0.23f * enemy.type.sizeScale
         val healthPercent = (enemy.health / enemy.maxHealth).coerceIn(0f, 1f)
 
         drawOval(
@@ -237,7 +254,7 @@ class IsoRenderer(private val map: GameMap) {
                 style = Stroke(width = 3f),
             )
         }
-        val barWidth = radius * 2.2f
+        val barWidth = radius * if (enemy.type.isBoss) 2.8f else 2.2f
         val barTopLeft = Offset(center.x - barWidth / 2f, center.y - radius * 1.55f)
         drawRoundRect(
             color = Color.Black.copy(alpha = 0.55f),
@@ -251,17 +268,37 @@ class IsoRenderer(private val map: GameMap) {
             size = Size(barWidth * healthPercent, 5f),
             cornerRadius = CornerRadius(3f, 3f),
         )
+        if (enemy.type.isBoss) {
+            drawCircle(
+                color = enemy.type.accentColor.copy(alpha = 0.85f),
+                radius = radius * 0.24f,
+                center = center - Offset(0f, radius * 1.08f),
+            )
+        }
     }
 
     private fun DrawScope.drawHitEffect(effect: com.nicolaielgame.game.model.HitEffect, layout: IsoLayout) {
         val center = gridToScreen(effect.row, effect.col, layout)
         val progress = (effect.age / effect.duration).coerceIn(0f, 1f)
+        val alpha = (1f - progress).coerceIn(0f, 1f)
         drawCircle(
-            color = effect.color.copy(alpha = (1f - progress) * 0.72f),
+            color = effect.color.copy(alpha = alpha * 0.72f),
             radius = layout.tileHeight * (0.18f + progress * 0.42f),
             center = center - Offset(0f, layout.tileHeight * 0.08f),
             style = Stroke(width = 2.8f),
         )
+        if (effect.label.isNotBlank()) {
+            val textOffset = center - Offset(0f, layout.tileHeight * (0.68f + progress * 0.42f))
+            drawIntoCanvas { canvas ->
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = effect.color.copy(alpha = alpha).toArgb()
+                    textAlign = Paint.Align.CENTER
+                    textSize = layout.tileHeight * 0.42f
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
+                canvas.nativeCanvas.drawText(effect.label, textOffset.x, textOffset.y, paint)
+            }
+        }
     }
 
     private fun DrawScope.drawProjectile(

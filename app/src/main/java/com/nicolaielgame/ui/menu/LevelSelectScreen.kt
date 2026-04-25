@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nicolaielgame.game.model.DifficultyMode
 import com.nicolaielgame.game.model.LevelCatalog
 import com.nicolaielgame.game.model.LevelDefinition
 
@@ -32,6 +33,8 @@ import com.nicolaielgame.game.model.LevelDefinition
 fun LevelSelectScreen(
     highestUnlockedLevel: Int,
     bestScoresByLevel: Map<Int, Int>,
+    selectedDifficulty: DifficultyMode,
+    onDifficultySelected: (DifficultyMode) -> Unit,
     onLevelSelected: (LevelDefinition) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -59,6 +62,11 @@ fun LevelSelectScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 6.dp, bottom = 20.dp),
             )
+            DifficultySelector(
+                selectedDifficulty = selectedDifficulty,
+                onDifficultySelected = onDifficultySelected,
+            )
+            Spacer(modifier = Modifier.height(14.dp))
 
             LevelCatalog.levels.forEach { level ->
                 val unlocked = level.id <= highestUnlockedLevel
@@ -78,6 +86,32 @@ fun LevelSelectScreen(
                 shape = RoundedCornerShape(8.dp),
             ) {
                 Text("Back to Menu")
+            }
+        }
+    }
+}
+
+@Composable
+private fun DifficultySelector(
+    selectedDifficulty: DifficultyMode,
+    onDifficultySelected: (DifficultyMode) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        DifficultyMode.entries.forEach { difficulty ->
+            val selected = difficulty == selectedDifficulty
+            FilledTonalButton(
+                onClick = { onDifficultySelected(difficulty) },
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = difficulty.title,
+                    color = if (selected) MaterialTheme.colorScheme.secondary else Color.White,
+                    fontWeight = if (selected) FontWeight.Black else FontWeight.Bold,
+                )
             }
         }
     }

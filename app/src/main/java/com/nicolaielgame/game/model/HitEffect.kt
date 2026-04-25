@@ -7,6 +7,7 @@ data class HitEffect(
     val row: Float,
     val col: Float,
     val color: Color,
+    val label: String = "",
     val age: Float = 0f,
     val duration: Float = 0.42f,
 )

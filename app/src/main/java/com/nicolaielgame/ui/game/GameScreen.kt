@@ -41,29 +41,39 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nicolaielgame.game.engine.GameEngine
+import com.nicolaielgame.game.model.DifficultyMode
+import com.nicolaielgame.game.model.GameRunResult
 import com.nicolaielgame.game.model.GameState
 import com.nicolaielgame.game.model.GameStatus
 import com.nicolaielgame.game.model.GridCell
 import com.nicolaielgame.game.model.LevelDefinition
 import com.nicolaielgame.game.model.TowerType
+import com.nicolaielgame.game.model.WavePhase
 import com.nicolaielgame.game.rendering.IsoRenderer
 import com.nicolaielgame.game.systems.AndroidToneSoundPlayer
 
 @Composable
 fun GameScreen(
     level: LevelDefinition,
+    difficulty: DifficultyMode,
     bestScore: Int,
+    soundEnabled: Boolean,
+    showGrid: Boolean,
     onBackToMenu: () -> Unit,
-    onScoreFinalized: suspend (levelId: Int, score: Int, won: Boolean) -> Unit,
+    onRunFinalized: suspend (GameRunResult) -> Unit,
 ) {
     val context = LocalContext.current
     val soundPlayer = remember { AndroidToneSoundPlayer(context) }
-    val engine = remember(level.id) { GameEngine(level, soundPlayer) }
+    val engine = remember(level.id, difficulty) { GameEngine(level, difficulty, soundPlayer) }
     val state by engine.state.collectAsState()
     var savedTerminalStatus by remember { mutableStateOf<GameStatus?>(null) }
 
     DisposableEffect(Unit) {
         onDispose { soundPlayer.release() }
+    }
+
+    LaunchedEffect(soundEnabled) {
+        soundPlayer.enabled = soundEnabled
     }
 
     LaunchedEffect(bestScore) {
@@ -82,7 +92,18 @@ fun GameScreen(
     LaunchedEffect(state.status, state.score) {
         if (state.isTerminal && savedTerminalStatus != state.status) {
             savedTerminalStatus = state.status
-            onScoreFinalized(level.id, state.score, state.status == GameStatus.Victory)
+            onRunFinalized(
+                GameRunResult(
+                    levelId = level.id,
+                    score = state.score,
+                    won = state.status == GameStatus.Victory,
+                    livesRemaining = state.lives,
+                    startingLives = difficulty.applyStartingLives(level.startingLives),
+                    difficulty = difficulty,
+                    bossesDefeated = state.bossesDefeated,
+                    towersPlacedByType = state.towersPlacedByType,
+                ),
+            )
         }
     }
 
@@ -92,7 +113,7 @@ fun GameScreen(
         onResume = engine::resume,
         onRestart = {
             savedTerminalStatus = null
-            engine.reset(bestScore, level)
+            engine.reset(bestScore, level, difficulty)
         },
         onBackToMenu = onBackToMenu,
         onCellTapped = engine::handleCellTap,
@@ -100,6 +121,7 @@ fun GameScreen(
         onUpgradeTower = engine::upgradeTower,
         onSellTower = engine::sellTower,
         onStartNextWave = engine::startNextWave,
+        showGrid = showGrid,
     )
 }
 
@@ -115,6 +137,7 @@ private fun GameScaffold(
     onUpgradeTower: (Int) -> Unit,
     onSellTower: (Int) -> Unit,
     onStartNextWave: () -> Unit,
+    showGrid: Boolean,
 ) {
     Box(
         modifier = Modifier
@@ -125,6 +148,7 @@ private fun GameScaffold(
             HudBar(state = state, onPause = onPause, onStartNextWave = onStartNextWave)
             GameCanvas(
                 state = state,
+                showGrid = showGrid,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -184,7 +208,7 @@ private fun HudBar(
         ) {
             Column(horizontalAlignment = Alignment.Start) {
                 Text(
-                    text = state.level.title,
+                    text = "${state.level.title} - ${state.difficulty.title}",
                     color = Color.White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
@@ -198,12 +222,12 @@ private fun HudBar(
             HudStat(label = "Lives", value = state.lives.toString())
             HudStat(label = "Gold", value = state.gold.toString())
             HudStat(label = "Score", value = state.score.toString())
-            if (state.wave.awaitingNextWave) {
+            if (state.wave.canStart && state.status == GameStatus.Running) {
                 FilledTonalButton(
                     onClick = onStartNextWave,
                     shape = RoundedCornerShape(8.dp),
                 ) {
-                    Text("Next")
+                    Text(if (state.wave.phase == WavePhase.Ready) "Start" else "Next")
                 }
             }
             FilledTonalButton(
@@ -237,6 +261,7 @@ private fun HudStat(label: String, value: String) {
 @Composable
 private fun GameCanvas(
     state: GameState,
+    showGrid: Boolean,
     modifier: Modifier = Modifier,
     onCellTapped: (GridCell) -> Unit,
 ) {
@@ -253,7 +278,7 @@ private fun GameCanvas(
             }
         },
     ) {
-        renderer.draw(this, state)
+        renderer.draw(this, state, showGrid)
     }
 }
 
@@ -305,6 +330,21 @@ private fun BottomBar(
                 fontSize = 13.sp,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Text(
+                text = state.wave.statusText,
+                color = if (state.wave.isBossWave) Color(0xFFFFD166) else Color(0xFF8CCFC3),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            if (state.wave.nextWavePreview.isNotBlank() && state.wave.canStart) {
+                Text(
+                    text = "Next: ${state.wave.nextWavePreview}",
+                    color = Color(0xFFC7EDE3),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+            }
             if (state.wave.nextWaveInSeconds > 0f) {
                 Text(
                     text = "Next wave in ${state.wave.nextWaveInSeconds.toInt() + 1}s",

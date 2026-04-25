@@ -19,6 +19,8 @@ interface SoundPlayer {
 }
 
 class AndroidToneSoundPlayer(context: Context) : SoundPlayer {
+    var enabled: Boolean = true
+
     private val toneGenerator: ToneGenerator? = runCatching {
         @Suppress("DEPRECATION")
         ToneGenerator(AudioManager.STREAM_MUSIC, 35)
@@ -78,6 +80,7 @@ class AndroidToneSoundPlayer(context: Context) : SoundPlayer {
 
     private fun play(tone: Int, durationMs: Int) {
         // TODO: Replace these generated tones with polished game SFX assets.
+        if (!enabled) return
         runCatching { toneGenerator?.startTone(tone, durationMs) }
     }
 }

@@ -2,97 +2,71 @@
 
 Denicolaiel Game is a native Android 2.5D isometric tower defense game built with Kotlin, Gradle, Jetpack Compose, and Compose Canvas. Enemies spawn in waves and dynamically reroute with A* pathfinding when the player places, upgrades, or sells towers.
 
-## Current Iteration 2 Features
+## Current Iteration 3 Features
 
-- Android Gradle project with a Kotlin `app` module, Compose UI, and Compose Canvas rendering.
-- Main menu, level select, game screen, pause overlay, victory screen, and game over screen.
-- Three playable levels with distinct grid sizes, spawn/base cells, locked cells, starting gold, lives, and wave definitions.
-- Dynamic A* pathfinding across every level.
-- Tower placement validation that rejects occupied cells, locked cells, enemy-occupied cells, insufficient gold, and path-blocking placements.
-- Tower range previews for selected tower types and existing towers.
-- Tower upgrade and sell/refund actions from a compact tower panel.
-- Mixed enemy waves with visible health bars, hit feedback, and slow status visuals.
-- Manual next-wave button after each cleared wave.
-- Score, gold, lives, victory/loss conditions, best score tracking, and level unlock progression.
-- Jetpack DataStore persistence for legacy best score, per-level best scores, and highest unlocked level.
-- Safe generated Android tone hooks for placement, upgrade, sell, enemy hit, enemy kill, wave start, victory, and game over.
-- Fast JVM tests for pathfinding, placement rejection, tower upgrades, wave definitions, and progression rules.
+- Native Android Kotlin app with Jetpack Compose screens and Compose Canvas game rendering.
+- Main menu, level select, difficulty selection, game screen, settings, achievements, pause, victory, and game over flows.
+- Three handcrafted isometric levels with dynamic A* rerouting and tower placement validation.
+- Deterministic wave lifecycle with explicit `Ready`, `In Progress`, `Cleared`, and `Finished` states.
+- Fixed the Next Wave bug so the button only appears when starting the next wave is valid.
+- Three tower types: Basic, Sniper, and Frost.
+- Tower upgrades, sell/refund controls, tower range preview, and selected tower stats.
+- Four enemy types: Normal, Fast, Tank, and Boss.
+- Boss wave support, with a Level 3 boss wave and distinct boss visuals/rewards.
+- Difficulty modes: Easy, Normal, and Hard.
+- Difficulty affects enemy health, enemy speed, rewards, starting gold/lives, and score.
+- Improved wave UX with clear status text, enemy counts, and next-wave previews.
+- Canvas polish: stronger tower firing flash, projectile hit rings, fading damage/reward numbers, death effects, frost rings, health bars, and boss markers.
+- DataStore persistence for best scores, highest unlocked level, last difficulty, settings, and achievements.
+- Settings screen for sound, music placeholder, grid visibility, and reset progress.
+- Local achievements: First Victory, No Lives Lost, Tower Specialist, Boss Slayer, and Hard Mode Clear.
+- JVM unit tests for pathfinding, placement rejection, upgrades, wave lifecycle, final-wave victory, difficulty modifiers, boss waves, settings defaults, achievements, and progression rules.
 
-## Tower Types
+## Wave Progression Fix
 
-- **Basic Tower**: balanced damage, range, fire rate, and cost.
-- **Sniper Tower**: high damage and long range with a slower fire rate.
-- **Frost Tower**: lower damage with a temporary enemy slow effect.
-
-## Enemy Types
-
-- **Normal Enemy**: baseline health, reward, score, and speed.
-- **Fast Enemy**: lower health, lower reward, and higher speed.
-- **Tank Enemy**: high health, higher reward, and slower movement.
-
-## Level Select And Progression
-
-The game currently includes three handcrafted maps:
-
-- **Level 1: Green Run**: a clean intro lane for learning tower placement.
-- **Level 2: Switchback**: wider routing with more meaningful reroutes.
-- **Level 3: Crucible**: tighter lanes and heavier mixed waves.
-
-Only Level 1 is unlocked by default. Winning a level unlocks the next level, and best scores are saved per level.
-
-## Open In Android Studio
-
-1. Open Android Studio.
-2. Choose **Open**.
-3. Select this repository folder.
-4. Let Android Studio sync the Gradle project.
-5. Use an emulator or physical device running Android 7.0/API 24 or newer.
+The wave manager now uses an explicit phase model instead of a loose `awaitingNextWave` transition. A wave can only start from `Ready` or `Cleared`, duplicate starts are rejected while `In Progress`, and the final wave moves to `Finished` only after all enemies have spawned and no active enemies remain.
 
 ## Build From Command Line
 
 From the repository root on Windows:
 
 ```powershell
-.\gradlew.bat assembleDebug
-```
-
-Run JVM tests:
-
-```powershell
 .\gradlew.bat testDebugUnitTest
+.\gradlew.bat assembleDebug
 ```
 
 On macOS or Linux:
 
 ```bash
-./gradlew assembleDebug
 ./gradlew testDebugUnitTest
+./gradlew assembleDebug
 ```
 
 ## Run On Emulator Or Device
 
-1. Start an Android emulator or connect a physical Android device with USB debugging enabled.
-2. In Android Studio, select the `app` run configuration.
-3. Press **Run**.
+1. Open this repository in Android Studio.
+2. Let Gradle sync.
+3. Select the `app` run configuration.
+4. Run on an emulator or Android 7.0/API 24+ device.
 
 The debug APK is produced at `app/build/outputs/apk/debug/app-debug.apk` after a successful command-line build.
 
 ## Known Limitations
 
-- Visuals are polished placeholder Canvas shapes, not authored production art.
-- Audio uses generated Android tones instead of authored sound assets.
+- Visuals are still generated Canvas shapes rather than authored production art.
+- Audio uses generated Android tones, and music is a persisted placeholder toggle only.
+- Balance is improved for Iteration 3 but still needs longer playtesting.
 - Enemy movement uses grid-space interpolation rather than advanced steering.
-- Balance values are first-pass and need more device playtesting.
-- Phone layout is the primary target; tablet and foldable layouts need more refinement.
-- There are no settings, profiles, achievements, boss waves, or difficulty modes yet.
+- Tablet and foldable layouts are improved only through simpler responsive spacing, not a dedicated large-screen UI.
+- Achievements are local only.
 
-## Suggested Iteration 3 Roadmap
+## Suggested Iteration 4 Roadmap
 
-- Add authored art and sound assets.
-- Improve attack, impact, movement, and wave transition animations.
-- Add difficulty modes and deeper balancing.
-- Add boss waves and optional special enemy behaviors.
-- Add save slots or player profiles.
-- Refine tablet and foldable layouts.
-- Add optional achievements.
-- Run a full balancing pass across all tower types, maps, and waves.
+- Add authored art packs.
+- Add real sound and music assets.
+- Add richer enemy AI and more special enemy behavior.
+- Add tower targeting modes.
+- Add special powers or player abilities.
+- Add cloud save or leaderboard support.
+- Prepare Play Store metadata, signing, and release pipeline.
+- Consider monetization only as a future optional phase.

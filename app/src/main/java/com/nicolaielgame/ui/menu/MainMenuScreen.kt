@@ -35,7 +35,10 @@ import androidx.compose.ui.unit.sp
 fun MainMenuScreen(
     bestScore: Int,
     lastUnlockedLevel: Int,
+    unlockedAchievements: Int,
     onStartGame: () -> Unit,
+    onSettings: () -> Unit,
+    onAchievements: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -82,7 +85,7 @@ fun MainMenuScreen(
                 ) {
                     MenuStat(label = "Best", value = bestScore.toString())
                     MenuStat(label = "Level", value = lastUnlockedLevel.toString())
-                    MenuStat(label = "Waves", value = "5")
+                    MenuStat(label = "Badges", value = unlockedAchievements.toString())
                 }
             }
 
@@ -96,6 +99,30 @@ fun MainMenuScreen(
                 shape = RoundedCornerShape(8.dp),
             ) {
                 Text(text = "Start Defense", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Button(
+                    onClick = onAchievements,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text("Achievements")
+                }
+                Button(
+                    onClick = onSettings,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text("Settings")
+                }
             }
         }
     }

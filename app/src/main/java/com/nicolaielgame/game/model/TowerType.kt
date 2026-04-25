@@ -19,10 +19,10 @@ enum class TowerType(
     Basic(
         title = "Basic Tower",
         shortLabel = "Basic",
-        baseCost = 35,
-        baseDamage = 26f,
+        baseCost = 32,
+        baseDamage = 28f,
         baseRange = 2.65f,
-        baseFireInterval = 0.7f,
+        baseFireInterval = 0.68f,
         projectileSpeed = 6.8f,
         primaryColor = Color(0xFF2858D8),
         accentColor = Color(0xFF6AD8FF),
@@ -30,10 +30,10 @@ enum class TowerType(
     Sniper(
         title = "Sniper Tower",
         shortLabel = "Sniper",
-        baseCost = 65,
-        baseDamage = 74f,
+        baseCost = 70,
+        baseDamage = 82f,
         baseRange = 4.25f,
-        baseFireInterval = 1.75f,
+        baseFireInterval = 1.8f,
         projectileSpeed = 9.4f,
         primaryColor = Color(0xFF6B3FD7),
         accentColor = Color(0xFFFFD166),
@@ -41,12 +41,12 @@ enum class TowerType(
     Frost(
         title = "Frost Tower",
         shortLabel = "Frost",
-        baseCost = 50,
-        baseDamage = 12f,
+        baseCost = 52,
+        baseDamage = 14f,
         baseRange = 2.95f,
         baseFireInterval = 0.95f,
         projectileSpeed = 6.2f,
-        slowMultiplier = 0.52f,
+        slowMultiplier = 0.56f,
         slowDuration = 1.65f,
         primaryColor = Color(0xFF167A8F),
         accentColor = Color(0xFFA9F1FF),
@@ -65,7 +65,7 @@ enum class TowerType(
     }
 
     fun upgradeCostForLevel(level: Int): Int {
-        return (baseCost * (0.72f + level * 0.58f)).roundToInt()
+        return (baseCost * (0.65f + level * 0.52f)).roundToInt()
     }
 }
 

@@ -1,6 +1,7 @@
 package com.nicolaielgame.game.systems
 
 import com.nicolaielgame.game.model.EnemyType
+import com.nicolaielgame.game.model.WavePhase
 import com.nicolaielgame.game.model.WaveSnapshot
 
 data class WaveEnemyGroup(
@@ -15,8 +16,17 @@ data class WaveDefinition(
     val totalEnemies: Int
         get() = groups.sumOf { it.count }
 
+    val isBossWave: Boolean
+        get() = groups.any { it.type.isBoss }
+
     fun spawnQueue(): List<EnemyType> {
         return groups.flatMap { group -> List(group.count) { group.type } }
+    }
+
+    fun previewText(): String {
+        return groups.joinToString("  ") { group ->
+            "${group.count} ${group.type.title}"
+        }
     }
 }
 
@@ -24,48 +34,38 @@ class WaveManager(private val waves: List<WaveDefinition>) {
     private var currentWaveIndex = 0
     private var spawnQueue = emptyList<EnemyType>()
     private var spawnedInWave = 0
-    private var spawnTimer = 0.8f
-    private var waveActive = false
-    private var awaitingNextWave = false
+    private var spawnTimer = 0f
+    private var phase = WavePhase.Ready
 
     init {
         reset()
     }
 
     val isFinished: Boolean
-        get() = currentWaveIndex >= waves.size
+        get() = phase == WavePhase.Finished
 
     val canStartNextWave: Boolean
-        get() = awaitingNextWave && !isFinished
+        get() = phase == WavePhase.Ready || phase == WavePhase.Cleared
 
     fun reset() {
         currentWaveIndex = 0
-        spawnQueue = waves.firstOrNull()?.spawnQueue().orEmpty()
+        spawnQueue = emptyList()
         spawnedInWave = 0
-        spawnTimer = 0.8f
-        waveActive = waves.isNotEmpty()
-        awaitingNextWave = false
+        spawnTimer = 0f
+        phase = if (waves.isEmpty()) WavePhase.Finished else WavePhase.Ready
     }
 
     fun startNextWave(): Boolean {
-        if (!canStartNextWave) return false
+        if (!canStartNextWave || currentWaveIndex !in waves.indices) return false
         spawnQueue = waves[currentWaveIndex].spawnQueue()
         spawnedInWave = 0
         spawnTimer = 0f
-        waveActive = true
-        awaitingNextWave = false
+        phase = WavePhase.InProgress
         return true
     }
 
-    fun update(deltaSeconds: Float, hasAliveEnemies: Boolean): List<EnemyType> {
-        if (isFinished) return emptyList()
-
-        if (!waveActive) {
-            if (!hasAliveEnemies && !awaitingNextWave) {
-                currentWaveIndex++
-                if (currentWaveIndex >= waves.size) return emptyList()
-                awaitingNextWave = true
-            }
+    fun update(deltaSeconds: Float): List<EnemyType> {
+        if (phase != WavePhase.InProgress || currentWaveIndex !in waves.indices) {
             return emptyList()
         }
 
@@ -79,30 +79,59 @@ class WaveManager(private val waves: List<WaveDefinition>) {
             spawnTimer += currentWave.spawnInterval
         }
 
-        if (spawnedInWave >= spawnQueue.size) {
-            waveActive = false
-        }
-
         return spawns
     }
 
-    fun snapshot(aliveEnemies: Int): WaveSnapshot {
-        val displayWave = if (waves.isEmpty()) 0 else (currentWaveIndex + 1).coerceAtMost(waves.size)
-        val leftToSpawn = if (isFinished || waves.isEmpty()) {
-            0
+    fun completeWaveIfCleared(hasAliveEnemies: Boolean) {
+        if (phase != WavePhase.InProgress) return
+        if (spawnedInWave < spawnQueue.size || hasAliveEnemies) return
+
+        if (currentWaveIndex >= waves.lastIndex) {
+            phase = WavePhase.Finished
         } else {
+            currentWaveIndex++
+            phase = WavePhase.Cleared
+            spawnQueue = emptyList()
+            spawnedInWave = 0
+            spawnTimer = 0f
+        }
+    }
+
+    fun snapshot(aliveEnemies: Int): WaveSnapshot {
+        val currentWave = when {
+            waves.isEmpty() -> 0
+            phase == WavePhase.Finished -> waves.size
+            else -> (currentWaveIndex + 1).coerceAtMost(waves.size)
+        }
+        val activeWave = waves.getOrNull(currentWaveIndex)
+        val leftToSpawn = if (phase == WavePhase.InProgress) {
             (spawnQueue.size - spawnedInWave).coerceAtLeast(0)
+        } else {
+            0
+        }
+        val statusText = when (phase) {
+            WavePhase.Ready -> if (currentWaveIndex == waves.lastIndex) "Final Wave Ready" else "Wave Ready"
+            WavePhase.InProgress -> when {
+                activeWave?.isBossWave == true -> "Boss Wave"
+                currentWaveIndex == waves.lastIndex -> "Final Wave"
+                else -> "Wave In Progress"
+            }
+            WavePhase.Cleared -> if (currentWaveIndex == waves.lastIndex) "Final Wave Ready" else "Wave Cleared"
+            WavePhase.Finished -> "Final Wave Cleared"
         }
 
         return WaveSnapshot(
-            currentWave = displayWave,
+            currentWave = currentWave,
             totalWaves = waves.size,
             enemiesLeftToSpawn = leftToSpawn,
             aliveEnemies = aliveEnemies,
             nextWaveInSeconds = 0f,
+            phase = phase,
             awaitingNextWave = canStartNextWave,
             enemiesRemaining = leftToSpawn + aliveEnemies,
+            isBossWave = activeWave?.isBossWave == true,
+            nextWavePreview = activeWave?.previewText().orEmpty(),
+            statusText = statusText,
         )
     }
 }
-
