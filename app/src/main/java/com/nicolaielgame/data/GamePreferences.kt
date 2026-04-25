@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 private val Context.gameDataStore by preferencesDataStore(name = "game_progress")
-private const val MaxPersistedLevels = 5
+private const val MaxPersistedLevels = 7
 
 data class ProgressSnapshot(
     val legacyBestScore: Int,
@@ -109,10 +109,29 @@ class GamePreferences(context: Context) {
                 screenShakeEnabled = preferences[Keys.ScreenShakeEnabled] ?: true,
                 damageNumbersEnabled = preferences[Keys.DamageNumbersEnabled] ?: true,
                 highContrastMode = preferences[Keys.HighContrastMode] ?: false,
+                fpsCounterEnabled = preferences[Keys.FpsCounterEnabled] ?: false,
                 lastDifficulty = preferences[Keys.LastDifficulty]
                     ?.let { runCatching { DifficultyMode.valueOf(it) }.getOrNull() }
                     ?: DifficultyMode.Normal,
             )
+        }
+
+    val leaderboard: Flow<List<LeaderboardEntry>> = dataStore.data
+        .safePreferences()
+        .map { preferences ->
+            LocalLeaderboard.sorted(
+                preferences[Keys.LocalLeaderboardEntries]
+                    .orEmpty()
+                    .mapNotNull(LeaderboardEntry::decode),
+            )
+        }
+
+    val dailyBests: Flow<List<DailyChallengeBest>> = dataStore.data
+        .safePreferences()
+        .map { preferences ->
+            preferences[Keys.DailyChallengeBests]
+                .orEmpty()
+                .mapNotNull(DailyChallengeBest::decode)
         }
 
     val achievements: Flow<Set<Achievement>> = dataStore.data
@@ -188,7 +207,32 @@ class GamePreferences(context: Context) {
             preferences[Keys.ScreenShakeEnabled] = settings.screenShakeEnabled
             preferences[Keys.DamageNumbersEnabled] = settings.damageNumbersEnabled
             preferences[Keys.HighContrastMode] = settings.highContrastMode
+            preferences[Keys.FpsCounterEnabled] = settings.fpsCounterEnabled
             preferences[Keys.LastDifficulty] = settings.lastDifficulty.name
+        }
+    }
+
+    suspend fun saveLeaderboardEntry(entry: LeaderboardEntry) {
+        dataStore.edit { preferences ->
+            val current = preferences[Keys.LocalLeaderboardEntries]
+                .orEmpty()
+                .mapNotNull(LeaderboardEntry::decode)
+            preferences[Keys.LocalLeaderboardEntries] = LocalLeaderboard
+                .recordCompletedRun(current, entry)
+                .map { it.encode() }
+                .toSet()
+        }
+    }
+
+    suspend fun saveDailyBest(entry: DailyChallengeBest) {
+        dataStore.edit { preferences ->
+            val current = preferences[Keys.DailyChallengeBests]
+                .orEmpty()
+                .mapNotNull(DailyChallengeBest::decode)
+            preferences[Keys.DailyChallengeBests] = DailyChallengeProgress
+                .saveBest(current, entry)
+                .map { it.encode() }
+                .toSet()
         }
     }
 
@@ -243,6 +287,18 @@ class GamePreferences(context: Context) {
         preferences.remove(Keys.profileHighestUnlockedLevel(profile))
         preferences.remove(Keys.profileUnlockedAchievements(profile))
         preferences.remove(Keys.profileTutorialCompleted(profile))
+        preferences[Keys.LocalLeaderboardEntries] = preferences[Keys.LocalLeaderboardEntries]
+            .orEmpty()
+            .mapNotNull(LeaderboardEntry::decode)
+            .filterNot { it.profileSlot == profile }
+            .map { it.encode() }
+            .toSet()
+        preferences[Keys.DailyChallengeBests] = preferences[Keys.DailyChallengeBests]
+            .orEmpty()
+            .mapNotNull(DailyChallengeBest::decode)
+            .filterNot { it.profileSlot == profile }
+            .map { it.encode() }
+            .toSet()
         (1..MaxPersistedLevels).forEach { levelId ->
             preferences.remove(Keys.profileBestScoreForLevel(profile, levelId))
         }
@@ -281,9 +337,12 @@ class GamePreferences(context: Context) {
         val ScreenShakeEnabled = booleanPreferencesKey("screen_shake_enabled")
         val DamageNumbersEnabled = booleanPreferencesKey("damage_numbers_enabled")
         val HighContrastMode = booleanPreferencesKey("high_contrast_mode")
+        val FpsCounterEnabled = booleanPreferencesKey("fps_counter_enabled")
         val LastDifficulty = stringPreferencesKey("last_difficulty")
         val UnlockedAchievements = stringSetPreferencesKey("unlocked_achievements")
         val TutorialCompleted = booleanPreferencesKey("tutorial_completed")
+        val LocalLeaderboardEntries = stringSetPreferencesKey("local_leaderboard_entries")
+        val DailyChallengeBests = stringSetPreferencesKey("daily_challenge_bests")
 
         fun bestScoreForLevel(levelId: Int) = intPreferencesKey("best_score_level_$levelId")
         fun profileBestScore(profile: Int) = intPreferencesKey("profile_${profile}_best_score")

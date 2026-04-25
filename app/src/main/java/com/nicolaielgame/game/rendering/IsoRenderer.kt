@@ -63,6 +63,7 @@ class IsoRenderer(private val map: GameMap) {
             state.towers.sortedBy { it.cell.row + it.cell.col }.forEach { tower ->
                 drawTower(tower, layout)
             }
+            drawAimBeams(state, layout)
             state.enemies.sortedBy { it.row + it.col }.forEach { enemy ->
                 drawEnemy(enemy, layout, highContrast)
             }
@@ -409,6 +410,23 @@ class IsoRenderer(private val map: GameMap) {
     private fun DrawScope.drawEnemyBody(enemyType: EnemyType, center: Offset, radius: Float, highContrast: Boolean) {
         val primary = if (highContrast) enemyType.primaryColor.copy(alpha = 1f) else enemyType.primaryColor
         when (enemyType) {
+            EnemyType.Swarm -> {
+                val body = Path().apply {
+                    moveTo(center.x, center.y - radius * 1.25f)
+                    lineTo(center.x + radius * 0.9f, center.y)
+                    lineTo(center.x, center.y + radius * 1.05f)
+                    lineTo(center.x - radius * 0.9f, center.y)
+                    close()
+                }
+                drawPath(body, primary)
+                drawCircle(
+                    color = enemyType.accentColor.copy(alpha = 0.88f),
+                    radius = radius * 0.38f,
+                    center = center,
+                )
+                drawPath(body, Color.White.copy(alpha = if (highContrast) 0.9f else 0.3f), style = Stroke(width = 2.4f))
+            }
+
             EnemyType.Fast -> {
                 val body = Path().apply {
                     moveTo(center.x, center.y - radius * 1.15f)
@@ -430,6 +448,33 @@ class IsoRenderer(private val map: GameMap) {
                     topLeft = Offset(center.x - radius, center.y - radius),
                     size = Size(radius * 2f, radius * 1.85f),
                     cornerRadius = CornerRadius(radius * 0.42f, radius * 0.42f),
+                )
+            }
+
+            EnemyType.Shielded -> {
+                val body = Path().apply {
+                    moveTo(center.x, center.y - radius)
+                    lineTo(center.x + radius * 0.9f, center.y - radius * 0.42f)
+                    lineTo(center.x + radius * 0.72f, center.y + radius * 0.72f)
+                    lineTo(center.x, center.y + radius)
+                    lineTo(center.x - radius * 0.72f, center.y + radius * 0.72f)
+                    lineTo(center.x - radius * 0.9f, center.y - radius * 0.42f)
+                    close()
+                }
+                drawPath(
+                    body,
+                    Brush.radialGradient(
+                        colors = listOf(enemyType.accentColor, primary),
+                        center = center - Offset(radius * 0.25f, radius * 0.3f),
+                        radius = radius * 1.55f,
+                    ),
+                )
+                drawPath(body, enemyType.accentColor.copy(alpha = 0.96f), style = Stroke(width = 4.2f))
+                drawCircle(
+                    color = enemyType.accentColor.copy(alpha = if (highContrast) 0.36f else 0.22f),
+                    radius = radius * 1.45f,
+                    center = center,
+                    style = Stroke(width = 3.4f),
                 )
             }
 
@@ -462,6 +507,32 @@ class IsoRenderer(private val map: GameMap) {
                     center = center,
                 )
             }
+        }
+    }
+
+    private fun DrawScope.drawAimBeams(state: GameState, layout: IsoLayout) {
+        val enemiesById = state.enemies.associateBy { it.id }
+        state.towers.forEach { tower ->
+            val beamTarget = tower.lastTargetEnemyId?.let { enemiesById[it] } ?: return@forEach
+            if (tower.aimBeamTimeRemaining <= 0f && tower.id != state.selectedTowerId) return@forEach
+
+            val start = cellCenter(tower.cell, layout) - Offset(0f, layout.tileHeight * 0.78f)
+            val end = gridToScreen(beamTarget.row, beamTarget.col, layout) - Offset(0f, layout.tileHeight * 0.24f)
+            val selectedBoost = if (tower.id == state.selectedTowerId) 1.25f else 1f
+            val pulse = (tower.aimBeamTimeRemaining / 0.18f).coerceIn(0.35f, 1f)
+
+            drawLine(
+                color = tower.type.accentColor.copy(alpha = 0.16f * selectedBoost * pulse),
+                start = start,
+                end = end,
+                strokeWidth = 7f,
+            )
+            drawLine(
+                color = Color.White.copy(alpha = 0.32f * selectedBoost * pulse),
+                start = start,
+                end = end,
+                strokeWidth = 2.2f,
+            )
         }
     }
 

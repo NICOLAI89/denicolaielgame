@@ -17,6 +17,7 @@ class GameSettingsTest {
         assertTrue(settings.screenShakeEnabled)
         assertTrue(settings.damageNumbersEnabled)
         assertFalse(settings.highContrastMode)
+        assertFalse(settings.fpsCounterEnabled)
         assertEquals(DifficultyMode.Normal, settings.lastDifficulty)
     }
 }

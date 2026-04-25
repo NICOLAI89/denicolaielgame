@@ -2,6 +2,8 @@ package com.nicolaielgame.ui.menu
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +40,8 @@ fun MainMenuScreen(
     unlockedAchievements: Int,
     activeProfile: Int,
     onStartGame: () -> Unit,
+    onDailyChallenge: () -> Unit,
+    onLeaderboard: () -> Unit,
     onSettings: () -> Unit,
     onAchievements: () -> Unit,
     onProfiles: () -> Unit,
@@ -53,12 +57,13 @@ fun MainMenuScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
             Text(
-                text = "Denicolaiel Game",
+                text = "Arcane Circuit Defense",
                 color = Color.White,
                 fontSize = 36.sp,
                 fontWeight = FontWeight.Black,
@@ -105,10 +110,29 @@ fun MainMenuScreen(
                 Text(text = "Start Defense", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = onDailyChallenge,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(8.dp),
+            ) {
+                Text(text = "Daily Challenge", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                Button(
+                    onClick = onLeaderboard,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text("Leaderboard")
+                }
                 Button(
                     onClick = onAchievements,
                     modifier = Modifier
@@ -117,15 +141,6 @@ fun MainMenuScreen(
                     shape = RoundedCornerShape(8.dp),
                 ) {
                     Text("Achievements")
-                }
-                Button(
-                    onClick = onSettings,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(8.dp),
-                ) {
-                    Text("Settings")
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
@@ -143,14 +158,24 @@ fun MainMenuScreen(
                     Text("Profiles")
                 }
                 Button(
-                    onClick = onTutorial,
+                    onClick = onSettings,
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                 ) {
-                    Text("Tutorial")
+                    Text("Settings")
                 }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Button(
+                onClick = onTutorial,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp),
+                shape = RoundedCornerShape(8.dp),
+            ) {
+                Text("Tutorial")
             }
         }
     }

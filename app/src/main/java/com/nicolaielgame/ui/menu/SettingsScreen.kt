@@ -94,6 +94,11 @@ fun SettingsScreen(
                         checked = settings.highContrastMode,
                         onCheckedChange = { onSettingsChanged(settings.copy(highContrastMode = it)) },
                     )
+                    SettingRow(
+                        label = "FPS counter",
+                        checked = settings.fpsCounterEnabled,
+                        onCheckedChange = { onSettingsChanged(settings.copy(fpsCounterEnabled = it)) },
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(14.dp))
@@ -160,6 +165,7 @@ private fun SettingRow(
             text = label,
             color = Color.White,
             fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
         )
         Switch(
             checked = checked,

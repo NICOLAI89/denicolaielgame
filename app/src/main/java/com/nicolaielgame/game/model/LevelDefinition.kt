@@ -23,6 +23,8 @@ object LevelCatalog {
         levelThree(),
         levelFour(),
         levelFive(),
+        levelSix(),
+        levelSeven(),
     )
 
     val firstLevel: LevelDefinition = levels.first()
@@ -219,6 +221,91 @@ object LevelCatalog {
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 20), WaveEnemyGroup(EnemyType.Tank, 7), WaveEnemyGroup(EnemyType.Boss, 1)), spawnInterval = 0.46f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 22), WaveEnemyGroup(EnemyType.Tank, 8), WaveEnemyGroup(EnemyType.Juggernaut, 1)), spawnInterval = 0.42f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 18), WaveEnemyGroup(EnemyType.Fast, 18), WaveEnemyGroup(EnemyType.Tank, 9), WaveEnemyGroup(EnemyType.Juggernaut, 1), WaveEnemyGroup(EnemyType.Regenerator, 1)), spawnInterval = 0.4f),
+            ),
+        )
+    }
+
+    private fun levelSix(): LevelDefinition {
+        val spawn = GridCell(0, 3)
+        val base = GridCell(12, 10)
+        val scenicPath = listOf(
+            GridCell(0, 3), GridCell(1, 3), GridCell(2, 3), GridCell(2, 4),
+            GridCell(2, 5), GridCell(3, 5), GridCell(4, 5), GridCell(4, 4),
+            GridCell(5, 4), GridCell(6, 4), GridCell(6, 5), GridCell(6, 6),
+            GridCell(7, 6), GridCell(8, 6), GridCell(8, 7), GridCell(8, 8),
+            GridCell(9, 8), GridCell(10, 8), GridCell(10, 9), GridCell(11, 9),
+            GridCell(12, 9), GridCell(12, 10),
+        ).toSet()
+        val locked = setOf(
+            spawn, base, GridCell(1, 3), GridCell(12, 9),
+            GridCell(3, 1), GridCell(4, 1), GridCell(8, 11), GridCell(9, 11),
+            GridCell(6, 1), GridCell(6, 11), GridCell(1, 8), GridCell(11, 4),
+        )
+
+        return LevelDefinition(
+            id = 6,
+            title = "Mirror Swarm",
+            description = "Swarm packs and shielded units punish single-target tunnels.",
+            map = GameMap(
+                rows = 13,
+                cols = 13,
+                spawn = spawn,
+                base = base,
+                buildLockedCells = locked,
+                scenicPath = scenicPath,
+            ),
+            startingGold = 278,
+            startingLives = 14,
+            waves = listOf(
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Swarm, 18), WaveEnemyGroup(EnemyType.Normal, 12)), spawnInterval = 0.42f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Shielded, 5), WaveEnemyGroup(EnemyType.Fast, 12)), spawnInterval = 0.5f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Swarm, 24), WaveEnemyGroup(EnemyType.Tank, 5)), spawnInterval = 0.38f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Shielded, 8), WaveEnemyGroup(EnemyType.Fast, 16), WaveEnemyGroup(EnemyType.Boss, 1)), spawnInterval = 0.42f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Swarm, 26), WaveEnemyGroup(EnemyType.Shielded, 8), WaveEnemyGroup(EnemyType.Tank, 7), WaveEnemyGroup(EnemyType.Regenerator, 1)), spawnInterval = 0.36f),
+            ),
+        )
+    }
+
+    private fun levelSeven(): LevelDefinition {
+        val spawn = GridCell(1, 0)
+        val base = GridCell(13, 13)
+        val scenicPath = listOf(
+            GridCell(1, 0), GridCell(1, 1), GridCell(1, 2), GridCell(2, 2),
+            GridCell(3, 2), GridCell(3, 3), GridCell(3, 4), GridCell(4, 4),
+            GridCell(5, 4), GridCell(5, 5), GridCell(5, 6), GridCell(6, 6),
+            GridCell(7, 6), GridCell(7, 7), GridCell(7, 8), GridCell(8, 8),
+            GridCell(9, 8), GridCell(9, 9), GridCell(9, 10), GridCell(10, 10),
+            GridCell(11, 10), GridCell(11, 11), GridCell(12, 11), GridCell(12, 12),
+            GridCell(13, 12), GridCell(13, 13),
+        ).toSet()
+        val locked = setOf(
+            spawn, base, GridCell(1, 1), GridCell(13, 12),
+            GridCell(0, 7), GridCell(1, 7), GridCell(2, 7), GridCell(13, 6),
+            GridCell(12, 6), GridCell(11, 6), GridCell(6, 1), GridCell(7, 1),
+            GridCell(6, 12), GridCell(7, 12), GridCell(4, 9), GridCell(9, 4),
+        )
+
+        return LevelDefinition(
+            id = 7,
+            title = "Arcane Apex",
+            description = "The full prototype challenge: bosses, shields, swarms, and ability timing.",
+            map = GameMap(
+                rows = 14,
+                cols = 14,
+                spawn = spawn,
+                base = base,
+                buildLockedCells = locked,
+                scenicPath = scenicPath,
+            ),
+            startingGold = 318,
+            startingLives = 13,
+            waves = listOf(
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 16), WaveEnemyGroup(EnemyType.Swarm, 18), WaveEnemyGroup(EnemyType.Normal, 10)), spawnInterval = 0.38f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Shielded, 8), WaveEnemyGroup(EnemyType.Tank, 6), WaveEnemyGroup(EnemyType.Swarm, 16)), spawnInterval = 0.42f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 22), WaveEnemyGroup(EnemyType.Shielded, 9), WaveEnemyGroup(EnemyType.Boss, 1)), spawnInterval = 0.36f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Swarm, 30), WaveEnemyGroup(EnemyType.Tank, 8), WaveEnemyGroup(EnemyType.Juggernaut, 1)), spawnInterval = 0.34f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Shielded, 10), WaveEnemyGroup(EnemyType.Fast, 18), WaveEnemyGroup(EnemyType.Regenerator, 1), WaveEnemyGroup(EnemyType.Boss, 1)), spawnInterval = 0.34f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Swarm, 34), WaveEnemyGroup(EnemyType.Shielded, 12), WaveEnemyGroup(EnemyType.Tank, 9), WaveEnemyGroup(EnemyType.Juggernaut, 1), WaveEnemyGroup(EnemyType.Regenerator, 1)), spawnInterval = 0.32f),
             ),
         )
     }

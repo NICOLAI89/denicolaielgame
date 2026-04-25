@@ -245,15 +245,16 @@ class GameEngine(
                     .toSet()
                 enemies = enemies.map { enemy ->
                     if (enemy.id in affectedIds) {
+                        val damage = effectiveDamage(AbilitySystem.MeteorDamage, enemy)
                         hitEffects += HitEffect(
                             id = nextHitEffectId++,
                             row = enemy.row,
                             col = enemy.col,
                             color = type.color,
-                            label = "-${AbilitySystem.MeteorDamage.toInt()}",
+                            label = "-${damage.toInt()}",
                             duration = 0.58f,
                         )
-                        enemy.copy(health = enemy.health - AbilitySystem.MeteorDamage, hitFlash = 0.2f)
+                        enemy.copy(health = enemy.health - damage, hitFlash = 0.2f)
                     } else {
                         enemy
                     }
@@ -743,7 +744,7 @@ class GameEngine(
                     row = target.row,
                     col = target.col,
                     color = projectile.towerType.accentColor,
-                    label = "-${projectile.damage.toInt()}",
+                    label = "-${effectiveDamage(projectile.damage, target).toInt()}",
                     duration = if (target.type.isBoss) 0.72f else 0.46f,
                 )
                 soundPlayer.enemyHit()
@@ -772,7 +773,7 @@ class GameEngine(
             if (hits.isEmpty()) {
                 enemy
             } else {
-                val damage = hits.sumOf { it.damage.toDouble() }.toFloat()
+                val damage = effectiveDamage(hits.sumOf { it.damage.toDouble() }.toFloat(), enemy)
                 val strongestSlow = hits
                     .filter { it.slowDuration > 0f && it.slowMultiplier < 1f }
                     .minByOrNull { it.slowMultiplier }
@@ -800,6 +801,7 @@ class GameEngine(
 
         for (tower in towers) {
             val cooledTower = tower.copy(cooldown = (tower.cooldown - deltaSeconds).coerceAtLeast(0f))
+                .copy(aimBeamTimeRemaining = (tower.aimBeamTimeRemaining - deltaSeconds).coerceAtLeast(0f))
             if (cooledTower.cooldown > 0f) {
                 updatedTowers += cooledTower
                 continue
@@ -822,12 +824,20 @@ class GameEngine(
                     slowDuration = stats.slowDuration,
                     speed = stats.projectileSpeed,
                 )
-                updatedTowers += cooledTower.copy(cooldown = cooledTower.fireInterval)
+                updatedTowers += cooledTower.copy(
+                    cooldown = cooledTower.fireInterval,
+                    lastTargetEnemyId = target.id,
+                    aimBeamTimeRemaining = 0.18f,
+                )
                 soundPlayer.towerShot()
             }
         }
 
         return TowerFireResult(updatedTowers, newProjectiles)
+    }
+
+    private fun effectiveDamage(baseDamage: Float, enemy: Enemy): Float {
+        return baseDamage * enemy.type.damageTakenMultiplier
     }
 
     private data class EnemyMoveResult(

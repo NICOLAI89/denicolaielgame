@@ -8,6 +8,8 @@ data class Tower(
     val totalInvested: Int = type.baseCost,
     val cooldown: Float = 0f,
     val targetingMode: TargetingMode = TargetingMode.First,
+    val lastTargetEnemyId: Int? = null,
+    val aimBeamTimeRemaining: Float = 0f,
 ) {
     val stats: TowerStats
         get() = type.statsForLevel(level)

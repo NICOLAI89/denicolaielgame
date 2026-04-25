@@ -64,6 +64,7 @@ fun GameScreen(
     screenShakeEnabled: Boolean,
     damageNumbersEnabled: Boolean,
     highContrastMode: Boolean,
+    fpsCounterEnabled: Boolean,
     onBackToMenu: () -> Unit,
     onRunFinalized: suspend (GameRunResult) -> Unit,
 ) {
@@ -72,6 +73,7 @@ fun GameScreen(
     val engine = remember(level.id, difficulty) { GameEngine(level, difficulty, soundPlayer) }
     val state by engine.state.collectAsState()
     var savedTerminalStatus by remember { mutableStateOf<GameStatus?>(null) }
+    var performanceStats by remember { mutableStateOf(PerformanceStats()) }
 
     DisposableEffect(Unit) {
         onDispose { soundPlayer.release() }
@@ -87,9 +89,27 @@ fun GameScreen(
 
     LaunchedEffect(Unit) {
         var lastFrame = withFrameNanos { it }
+        var sampleSeconds = 0f
+        var sampleFrames = 0
+        var sampleUpdateNanos = 0L
         while (true) {
             val frame = withFrameNanos { it }
-            engine.tick((frame - lastFrame) / 1_000_000_000f)
+            val deltaSeconds = (frame - lastFrame) / 1_000_000_000f
+            val updateStarted = System.nanoTime()
+            engine.tick(deltaSeconds)
+            sampleUpdateNanos += System.nanoTime() - updateStarted
+            sampleSeconds += deltaSeconds
+            sampleFrames++
+            if (sampleSeconds >= 0.5f && sampleFrames > 0) {
+                performanceStats = PerformanceStats(
+                    fps = (sampleFrames / sampleSeconds).toInt(),
+                    averageFrameMs = sampleSeconds * 1000f / sampleFrames,
+                    averageUpdateMs = sampleUpdateNanos / 1_000_000f / sampleFrames,
+                )
+                sampleSeconds = 0f
+                sampleFrames = 0
+                sampleUpdateNanos = 0L
+            }
             lastFrame = frame
         }
     }
@@ -133,6 +153,8 @@ fun GameScreen(
         screenShakeEnabled = screenShakeEnabled,
         damageNumbersEnabled = damageNumbersEnabled,
         highContrastMode = highContrastMode,
+        fpsCounterEnabled = fpsCounterEnabled,
+        performanceStats = performanceStats,
     )
 }
 
@@ -154,6 +176,8 @@ private fun GameScaffold(
     screenShakeEnabled: Boolean,
     damageNumbersEnabled: Boolean,
     highContrastMode: Boolean,
+    fpsCounterEnabled: Boolean,
+    performanceStats: PerformanceStats,
 ) {
     Box(
         modifier = Modifier
@@ -213,6 +237,38 @@ private fun GameScaffold(
 
         if (state.waveBannerTimeRemaining > 0f && state.waveBanner.isNotBlank() && state.status == GameStatus.Running) {
             WaveBanner(state = state)
+        }
+        if (fpsCounterEnabled) {
+            PerformanceOverlay(performanceStats = performanceStats)
+        }
+    }
+}
+
+private data class PerformanceStats(
+    val fps: Int = 0,
+    val averageFrameMs: Float = 0f,
+    val averageUpdateMs: Float = 0f,
+)
+
+@Composable
+private fun PerformanceOverlay(performanceStats: PerformanceStats) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 64.dp, end = 10.dp),
+        contentAlignment = Alignment.TopEnd,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color(0xDD050A12),
+        ) {
+            Text(
+                text = "FPS ${performanceStats.fps}  Frame ${oneDecimal(performanceStats.averageFrameMs)}ms  Update ${oneDecimal(performanceStats.averageUpdateMs)}ms",
+                color = Color(0xFFA9F1FF),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            )
         }
     }
 }
@@ -515,29 +571,30 @@ private fun AbilityBar(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = ability.shortLabel,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                     )
                     Text(
                         text = when {
                             ability == AbilityType.EmergencyGold -> "${state.abilities.emergencyGoldUsesRemaining} uses"
-                            cooldown > 0f -> "${cooldown.toInt() + 1}s"
+                            cooldown > 0f -> "CD ${cooldown.toInt() + 1}s"
                             else -> "Ready"
                         },
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
                     )
                     val readyFraction = (1f - cooldown / ability.cooldownSeconds).coerceIn(0f, 1f)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(3.dp)
+                            .height(4.dp)
                             .background(Color.Black.copy(alpha = 0.28f)),
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(readyFraction)
-                                .height(3.dp)
+                                .height(4.dp)
                                 .background(if (enabled) Color.White else ability.color),
                         )
                     }
@@ -598,9 +655,9 @@ private fun SelectedTowerPanel(
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Targeting ${tower.targetingMode.title}",
+                text = "Targeting ${tower.targetingMode.shortLabel}: ${tower.targetingMode.title}",
                 color = Color(0xFFF6C55D),
-                fontSize = 12.sp,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
             Row(
@@ -622,8 +679,9 @@ private fun SelectedTowerPanel(
                         contentPadding = ButtonDefaults.ContentPadding,
                     ) {
                         Text(
-                            text = mode.title.take(3),
-                            fontSize = 10.sp,
+                            text = mode.shortLabel,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
                             maxLines = 1,
                         )
                     }

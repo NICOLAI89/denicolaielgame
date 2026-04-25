@@ -9,5 +9,6 @@ data class GameSettings(
     val screenShakeEnabled: Boolean = true,
     val damageNumbersEnabled: Boolean = true,
     val highContrastMode: Boolean = false,
+    val fpsCounterEnabled: Boolean = false,
     val lastDifficulty: DifficultyMode = DifficultyMode.Normal,
 )
