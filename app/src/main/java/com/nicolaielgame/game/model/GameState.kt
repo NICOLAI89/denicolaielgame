@@ -1,0 +1,49 @@
+package com.nicolaielgame.game.model
+
+enum class GameStatus {
+    Running,
+    Paused,
+    GameOver,
+    Victory,
+}
+
+data class WaveSnapshot(
+    val currentWave: Int,
+    val totalWaves: Int,
+    val enemiesLeftToSpawn: Int,
+    val aliveEnemies: Int,
+    val nextWaveInSeconds: Float,
+    val awaitingNextWave: Boolean = false,
+    val enemiesRemaining: Int = enemiesLeftToSpawn + aliveEnemies,
+)
+
+data class GameState(
+    val map: GameMap = GameMap.default(),
+    val level: LevelDefinition = LevelCatalog.firstLevel,
+    val status: GameStatus = GameStatus.Running,
+    val towers: List<Tower> = emptyList(),
+    val enemies: List<Enemy> = emptyList(),
+    val projectiles: List<Projectile> = emptyList(),
+    val hitEffects: List<HitEffect> = emptyList(),
+    val pathPreview: List<GridCell> = emptyList(),
+    val selectedCell: GridCell? = null,
+    val selectedTowerType: TowerType = TowerType.Basic,
+    val selectedTowerId: Int? = null,
+    val rangePreview: RangePreview? = null,
+    val placementMessage: String = "Tap a buildable tile to place a tower.",
+    val placementAccepted: Boolean = true,
+    val lives: Int = 20,
+    val gold: Int = 120,
+    val score: Int = 0,
+    val bestScore: Int = 0,
+    val wave: WaveSnapshot = WaveSnapshot(
+        currentWave = 1,
+        totalWaves = 5,
+        enemiesLeftToSpawn = 0,
+        aliveEnemies = 0,
+        nextWaveInSeconds = 0f,
+    ),
+) {
+    val isTerminal: Boolean
+        get() = status == GameStatus.GameOver || status == GameStatus.Victory
+}

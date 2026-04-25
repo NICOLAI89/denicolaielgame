@@ -1,0 +1,13 @@
+.gradle/
+.idea/
+.kotlin/
+build/
+captures/
+local.properties
+*.iml
+*.apk
+*.aab
+*.ap_
+app/build/
+_tmp_*/
+.tmp-git-*
