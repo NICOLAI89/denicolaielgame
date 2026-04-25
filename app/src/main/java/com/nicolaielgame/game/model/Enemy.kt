@@ -14,6 +14,7 @@ data class Enemy(
     val scoreValue: Int = reward + 10,
     val slowTimeRemaining: Float = 0f,
     val slowMultiplier: Float = 1f,
+    val hitFlash: Float = 0f,
 ) {
     val isSlowed: Boolean
         get() = slowTimeRemaining > 0f && slowMultiplier < 1f

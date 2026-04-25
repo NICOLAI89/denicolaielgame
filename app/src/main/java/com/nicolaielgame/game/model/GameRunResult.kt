@@ -9,4 +9,5 @@ data class GameRunResult(
     val difficulty: DifficultyMode,
     val bossesDefeated: Int,
     val towersPlacedByType: Map<TowerType, Int>,
+    val runStats: RunStats = RunStats(),
 )

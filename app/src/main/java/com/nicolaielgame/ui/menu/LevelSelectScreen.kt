@@ -152,7 +152,7 @@ private fun LevelRow(
                     lineHeight = 15.sp,
                 )
                 Text(
-                    text = "Best $bestScore  Waves ${level.totalWaves}",
+                    text = "Best $bestScore  Waves ${level.totalWaves}${if (level.waves.any { it.isBossWave }) "  Boss" else ""}",
                     color = MaterialTheme.colorScheme.secondary,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 4.dp),

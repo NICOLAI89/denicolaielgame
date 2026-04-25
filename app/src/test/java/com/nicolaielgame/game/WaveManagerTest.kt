@@ -49,6 +49,7 @@ class WaveManagerTest {
         manager.completeWaveIfCleared(hasAliveEnemies = false)
         val cleared = manager.snapshot(aliveEnemies = 0)
         assertEquals(WavePhase.Cleared, cleared.phase)
+        assertEquals(1, cleared.wavesCompleted)
         assertTrue(cleared.canStart)
         assertTrue(manager.startNextWave())
     }
@@ -67,6 +68,7 @@ class WaveManagerTest {
 
         assertTrue(manager.isFinished)
         assertEquals(WavePhase.Finished, manager.snapshot(aliveEnemies = 0).phase)
+        assertEquals(1, manager.snapshot(aliveEnemies = 0).wavesCompleted)
         assertFalse(manager.snapshot(aliveEnemies = 0).canStart)
     }
 }

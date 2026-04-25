@@ -11,50 +11,72 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import com.nicolaielgame.game.model.AbilityType
 import com.nicolaielgame.game.model.Enemy
+import com.nicolaielgame.game.model.EnemyType
 import com.nicolaielgame.game.model.GameMap
 import com.nicolaielgame.game.model.GameState
 import com.nicolaielgame.game.model.GridCell
 import com.nicolaielgame.game.model.Projectile
 import com.nicolaielgame.game.model.Tower
+import com.nicolaielgame.game.model.TowerType
 import kotlin.math.abs
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 class IsoRenderer(private val map: GameMap) {
-    fun draw(drawScope: DrawScope, state: GameState, showGrid: Boolean = true) = with(drawScope) {
+    private val drawCells = map.cells.sortedWith(compareBy<GridCell> { it.row + it.col }.thenBy { it.row })
+
+    fun draw(
+        drawScope: DrawScope,
+        state: GameState,
+        showGrid: Boolean = true,
+        screenShakeEnabled: Boolean = true,
+        showDamageNumbers: Boolean = true,
+        highContrast: Boolean = false,
+    ) = with(drawScope) {
         val layout = createLayout(size)
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color(0xFF071413), Color(0xFF123A35), Color(0xFF1D2334)),
+                colors = if (highContrast) {
+                    listOf(Color.Black, Color(0xFF08202A), Color.Black)
+                } else {
+                    listOf(ArcanePalette.Void, ArcanePalette.Deep, Color(0xFF14102B))
+                },
             ),
         )
 
-        drawBoardShadow(layout)
-        for (cell in map.cells.sortedWith(compareBy<GridCell> { it.row + it.col }.thenBy { it.row })) {
-            drawTile(cell, layout, state, showGrid)
-        }
+        drawAmbience(layout)
+        val shake = shakeOffset(state, screenShakeEnabled)
+        translate(shake.x, shake.y) {
+            drawBoardShadow(layout)
+            for (cell in drawCells) {
+                drawTile(cell, layout, state, showGrid, highContrast)
+            }
 
-        state.rangePreview?.let { preview ->
-            drawRangePreview(preview.cell, preview.range, preview.color, layout)
+            state.rangePreview?.let { preview ->
+                drawRangePreview(preview.cell, preview.range, preview.color, layout)
+            }
+            state.towers.sortedBy { it.cell.row + it.cell.col }.forEach { tower ->
+                drawTower(tower, layout)
+            }
+            state.enemies.sortedBy { it.row + it.col }.forEach { enemy ->
+                drawEnemy(enemy, layout, highContrast)
+            }
+            state.hitEffects.forEach { effect ->
+                drawHitEffect(effect, layout, showDamageNumbers)
+            }
+            state.abilityEffects.forEach { effect ->
+                drawAbilityEffect(effect, layout)
+            }
+            state.projectiles.forEach { projectile ->
+                drawProjectile(projectile, state.enemies, layout)
+            }
+            drawEndpointMarkers(layout)
         }
-        state.towers.sortedBy { it.cell.row + it.cell.col }.forEach { tower ->
-            drawTower(tower, layout)
-        }
-        state.enemies.sortedBy { it.row + it.col }.forEach { enemy ->
-            drawEnemy(enemy, layout)
-        }
-        state.hitEffects.forEach { effect ->
-            drawHitEffect(effect, layout)
-        }
-        state.abilityEffects.forEach { effect ->
-            drawAbilityEffect(effect, layout)
-        }
-        state.projectiles.forEach { projectile ->
-            drawProjectile(projectile, state.enemies, layout)
-        }
-        drawEndpointMarkers(layout)
     }
 
     fun cellForOffset(offset: Offset, canvasSize: Size): GridCell? {
@@ -64,6 +86,37 @@ class IsoRenderer(private val map: GameMap) {
             val normalized = abs(offset.x - center.x) / (layout.tileWidth / 2f) +
                 abs(offset.y - center.y) / (layout.tileHeight / 2f)
             normalized <= 1f
+        }
+    }
+
+    private fun shakeOffset(state: GameState, enabled: Boolean): Offset {
+        if (!enabled || state.shakeTimeRemaining <= 0f || state.shakeIntensity <= 0f) return Offset.Zero
+        val pulse = (state.shakeTimeRemaining * 80f).roundToInt()
+        val xSign = if (pulse % 2 == 0) 1f else -1f
+        val ySign = if (pulse % 3 == 0) -1f else 1f
+        val fade = state.shakeTimeRemaining.coerceIn(0f, 0.45f) / 0.45f
+        return Offset(xSign * state.shakeIntensity * fade, ySign * state.shakeIntensity * 0.55f * fade)
+    }
+
+    private fun DrawScope.drawAmbience(layout: IsoLayout) {
+        drawCircle(
+            color = ArcanePalette.CircuitTeal.copy(alpha = 0.08f),
+            radius = size.minDimension * 0.42f,
+            center = Offset(size.width * 0.22f, size.height * 0.24f),
+        )
+        drawCircle(
+            color = ArcanePalette.ArcaneViolet.copy(alpha = 0.08f),
+            radius = size.minDimension * 0.38f,
+            center = Offset(size.width * 0.78f, size.height * 0.72f),
+        )
+        repeat(5) { index ->
+            val y = layout.origin.y + index * layout.tileHeight * 2.15f
+            drawLine(
+                color = ArcanePalette.CircuitBlue.copy(alpha = 0.08f),
+                start = Offset(0f, y),
+                end = Offset(size.width, y + layout.tileHeight * 0.8f),
+                strokeWidth = 1.4f,
+            )
         }
     }
 
@@ -87,26 +140,32 @@ class IsoRenderer(private val map: GameMap) {
         layout: IsoLayout,
         state: GameState,
         showGrid: Boolean,
+        highContrast: Boolean,
     ) {
         val center = cellCenter(cell, layout)
         val tile = diamondPath(center, layout.tileWidth, layout.tileHeight)
+        val side = diamondPath(center + Offset(0f, layout.tileHeight * 0.18f), layout.tileWidth, layout.tileHeight)
         val isPath = cell in state.pathPreview
         val isLocked = cell in map.buildLockedCells
         val isSelected = state.selectedCell == cell
         val baseColor = when {
-            cell == map.spawn -> Color(0xFF1BC7A4)
-            cell == map.base -> Color(0xFFF0B84E)
-            isLocked -> Color(0xFF314E54)
-            isPath -> Color(0xFF6B7D49)
-            cell in map.scenicPath -> Color(0xFF415F49)
-            else -> Color(0xFF244D47)
+            cell == map.spawn -> ArcanePalette.CircuitTeal
+            cell == map.base -> ArcanePalette.WarningGold
+            isLocked -> if (highContrast) Color(0xFF45515F) else ArcanePalette.TileLocked
+            isPath -> if (highContrast) Color(0xFF67B88D) else ArcanePalette.TilePath
+            cell in map.scenicPath -> Color(0xFF315B50)
+            else -> if (highContrast) Color(0xFF244E5E) else ArcanePalette.TileTop
         }
 
+        drawPath(side, ArcanePalette.TileSide.copy(alpha = 0.92f))
         drawPath(tile, baseColor)
+        if (isPath) {
+            drawPath(tile, ArcanePalette.CircuitTeal.copy(alpha = if (highContrast) 0.22f else 0.12f))
+        }
         if (showGrid || isPath || isSelected) {
             drawPath(
                 path = tile,
-                color = Color.White.copy(alpha = if (isPath) 0.22f else 0.1f),
+                color = if (highContrast) Color.White.copy(alpha = 0.32f) else Color.White.copy(alpha = if (isPath) 0.22f else 0.1f),
                 style = Stroke(width = 1.4f),
             )
         }
@@ -133,13 +192,24 @@ class IsoRenderer(private val map: GameMap) {
         val base = cellCenter(map.base, layout)
 
         drawCircle(
-            color = Color(0xAA18E0B5),
-            radius = layout.tileHeight * 0.38f,
+            color = ArcanePalette.CircuitTeal.copy(alpha = 0.16f),
+            radius = layout.tileHeight * 0.86f,
+            center = spawn,
+        )
+        drawCircle(
+            color = ArcanePalette.CircuitTeal.copy(alpha = 0.84f),
+            radius = layout.tileHeight * 0.45f,
             center = spawn,
             style = Stroke(width = 5f),
         )
+        drawLine(
+            color = Color.White.copy(alpha = 0.72f),
+            start = spawn - Offset(layout.tileHeight * 0.18f, 0f),
+            end = spawn + Offset(layout.tileHeight * 0.18f, 0f),
+            strokeWidth = 3f,
+        )
         drawCircle(
-            color = Color(0xFFB5FFE9),
+            color = ArcanePalette.TextSoft,
             radius = layout.tileHeight * 0.13f,
             center = spawn,
         )
@@ -150,12 +220,17 @@ class IsoRenderer(private val map: GameMap) {
             center = base + Offset(0f, layout.tileHeight * 0.16f),
         )
         drawCircle(
-            color = Color(0xFFF6C55D),
-            radius = layout.tileHeight * 0.34f,
+            color = ArcanePalette.WarningGold.copy(alpha = 0.22f),
+            radius = layout.tileHeight * 0.68f,
             center = base,
         )
         drawCircle(
-            color = Color(0xFF7C3F1D),
+            color = ArcanePalette.WarningGold,
+            radius = layout.tileHeight * 0.38f,
+            center = base,
+        )
+        drawCircle(
+            color = ArcanePalette.ArcaneViolet,
             radius = layout.tileHeight * 0.15f,
             center = base,
         )
@@ -186,36 +261,75 @@ class IsoRenderer(private val map: GameMap) {
         val center = cellCenter(tower.cell, layout)
         val w = layout.tileWidth
         val h = layout.tileHeight
+        val fireFlash = (tower.cooldown / tower.fireInterval).coerceIn(0f, 1f)
 
         drawOval(
             color = Color.Black.copy(alpha = 0.32f),
             topLeft = Offset(center.x - w * 0.25f, center.y - h * 0.02f),
             size = Size(w * 0.5f, h * 0.24f),
         )
-        drawRoundRect(
-            color = tower.type.primaryColor,
-            topLeft = Offset(center.x - w * 0.16f, center.y - h * 0.72f),
-            size = Size(w * 0.32f, h * 0.68f),
-            cornerRadius = CornerRadius(8f, 8f),
-        )
-        drawRoundRect(
-            color = tower.type.accentColor,
-            topLeft = Offset(center.x - w * 0.09f, center.y - h * 0.62f),
-            size = Size(w * 0.18f, h * 0.18f),
-            cornerRadius = CornerRadius(6f, 6f),
-        )
+
+        when (tower.type) {
+            TowerType.Basic -> {
+                drawRoundRect(
+                    color = tower.type.primaryColor,
+                    topLeft = Offset(center.x - w * 0.16f, center.y - h * 0.72f),
+                    size = Size(w * 0.32f, h * 0.68f),
+                    cornerRadius = CornerRadius(8f, 8f),
+                )
+                drawCircle(
+                    color = tower.type.accentColor,
+                    radius = h * 0.16f,
+                    center = Offset(center.x, center.y - h * 0.66f),
+                )
+            }
+
+            TowerType.Sniper -> {
+                drawRoundRect(
+                    color = tower.type.primaryColor,
+                    topLeft = Offset(center.x - w * 0.11f, center.y - h * 0.92f),
+                    size = Size(w * 0.22f, h * 0.86f),
+                    cornerRadius = CornerRadius(7f, 7f),
+                )
+                drawLine(
+                    color = tower.type.accentColor,
+                    start = Offset(center.x, center.y - h * 1.02f),
+                    end = Offset(center.x, center.y - h * 0.52f),
+                    strokeWidth = 5f,
+                )
+            }
+
+            TowerType.Frost -> {
+                drawRoundRect(
+                    color = tower.type.primaryColor,
+                    topLeft = Offset(center.x - w * 0.15f, center.y - h * 0.62f),
+                    size = Size(w * 0.3f, h * 0.58f),
+                    cornerRadius = CornerRadius(9f, 9f),
+                )
+                drawCircle(
+                    color = tower.type.accentColor.copy(alpha = 0.88f),
+                    radius = h * 0.22f,
+                    center = Offset(center.x, center.y - h * 0.78f),
+                    style = Stroke(width = 4f),
+                )
+            }
+        }
         drawCircle(
-            color = Color(0xFFF6C55D),
-            radius = h * 0.18f,
-            center = Offset(center.x, center.y - h * 0.78f),
+            color = ArcanePalette.WarningGold,
+            radius = h * 0.13f,
+            center = Offset(center.x, center.y - h * 0.84f),
         )
-        val fireFlash = (tower.cooldown / tower.fireInterval).coerceIn(0f, 1f)
         if (fireFlash > 0.72f) {
             drawCircle(
                 color = tower.type.accentColor.copy(alpha = (fireFlash - 0.72f) * 2.8f),
-                radius = h * (0.18f + fireFlash * 0.16f),
+                radius = h * (0.22f + fireFlash * 0.24f),
                 center = Offset(center.x, center.y - h * 0.82f),
                 style = Stroke(width = 3f),
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = (fireFlash - 0.72f) * 1.8f),
+                radius = h * 0.08f,
+                center = Offset(center.x, center.y - h * 0.88f),
             )
         }
         repeat(tower.level.coerceAtMost(4)) { index ->
@@ -230,31 +344,37 @@ class IsoRenderer(private val map: GameMap) {
         }
     }
 
-    private fun DrawScope.drawEnemy(enemy: Enemy, layout: IsoLayout) {
+    private fun DrawScope.drawEnemy(enemy: Enemy, layout: IsoLayout, highContrast: Boolean) {
         val center = gridToScreen(enemy.row, enemy.col, layout)
         val radius = layout.tileHeight * 0.23f * enemy.type.sizeScale
         val healthPercent = (enemy.health / enemy.maxHealth).coerceIn(0f, 1f)
+        val bodyCenter = center - Offset(0f, radius * 0.25f)
 
         drawOval(
             color = Color.Black.copy(alpha = 0.3f),
             topLeft = Offset(center.x - radius * 1.2f, center.y + radius * 0.45f),
             size = Size(radius * 2.4f, radius * 0.65f),
         )
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(enemy.type.accentColor, enemy.type.primaryColor),
-                center = center - Offset(radius * 0.25f, radius * 0.25f),
-                radius = radius * 1.4f,
-            ),
-            radius = radius,
-            center = center - Offset(0f, radius * 0.25f),
-        )
+        drawEnemyBody(enemy.type, bodyCenter, radius, highContrast)
+        if (enemy.hitFlash > 0f) {
+            drawCircle(
+                color = Color.White.copy(alpha = (enemy.hitFlash / 0.18f).coerceIn(0f, 1f) * 0.72f),
+                radius = radius * if (enemy.type.isBoss) 1.35f else 1.12f,
+                center = bodyCenter,
+                style = Stroke(width = if (enemy.type.isBoss) 5f else 3f),
+            )
+        }
         if (enemy.isSlowed) {
             drawCircle(
-                color = Color(0x99A9F1FF),
-                radius = radius * 1.24f,
-                center = center - Offset(0f, radius * 0.25f),
-                style = Stroke(width = 3f),
+                color = ArcanePalette.Frost.copy(alpha = 0.32f),
+                radius = radius * 1.45f,
+                center = bodyCenter,
+            )
+            drawCircle(
+                color = ArcanePalette.Frost.copy(alpha = 0.9f),
+                radius = radius * 1.38f,
+                center = bodyCenter,
+                style = Stroke(width = if (enemy.type.isBoss) 5f else 3f),
             )
         }
         val barWidth = radius * if (enemy.type.isBoss) 2.8f else 2.2f
@@ -277,10 +397,79 @@ class IsoRenderer(private val map: GameMap) {
                 radius = radius * 0.24f,
                 center = center - Offset(0f, radius * 1.08f),
             )
+            drawCircle(
+                color = enemy.type.accentColor.copy(alpha = 0.3f),
+                radius = radius * 1.62f,
+                center = bodyCenter,
+                style = Stroke(width = 4f),
+            )
         }
     }
 
-    private fun DrawScope.drawHitEffect(effect: com.nicolaielgame.game.model.HitEffect, layout: IsoLayout) {
+    private fun DrawScope.drawEnemyBody(enemyType: EnemyType, center: Offset, radius: Float, highContrast: Boolean) {
+        val primary = if (highContrast) enemyType.primaryColor.copy(alpha = 1f) else enemyType.primaryColor
+        when (enemyType) {
+            EnemyType.Fast -> {
+                val body = Path().apply {
+                    moveTo(center.x, center.y - radius * 1.15f)
+                    lineTo(center.x + radius * 1.15f, center.y + radius * 0.78f)
+                    lineTo(center.x - radius * 1.05f, center.y + radius * 0.62f)
+                    close()
+                }
+                drawPath(body, primary)
+                drawPath(body, enemyType.accentColor.copy(alpha = 0.75f), style = Stroke(width = 2.5f))
+            }
+
+            EnemyType.Tank -> {
+                drawRoundRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(enemyType.accentColor, primary),
+                        center = center - Offset(radius * 0.3f, radius * 0.25f),
+                        radius = radius * 1.5f,
+                    ),
+                    topLeft = Offset(center.x - radius, center.y - radius),
+                    size = Size(radius * 2f, radius * 1.85f),
+                    cornerRadius = CornerRadius(radius * 0.42f, radius * 0.42f),
+                )
+            }
+
+            EnemyType.Boss, EnemyType.Juggernaut, EnemyType.Regenerator -> {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(enemyType.accentColor, primary, Color.Black.copy(alpha = 0.48f)),
+                        center = center - Offset(radius * 0.25f, radius * 0.25f),
+                        radius = radius * 1.65f,
+                    ),
+                    radius = radius,
+                    center = center,
+                )
+                drawCircle(
+                    color = enemyType.accentColor.copy(alpha = 0.95f),
+                    radius = radius * 0.55f,
+                    center = center,
+                    style = Stroke(width = 4f),
+                )
+            }
+
+            EnemyType.Normal -> {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(enemyType.accentColor, primary),
+                        center = center - Offset(radius * 0.25f, radius * 0.25f),
+                        radius = radius * 1.4f,
+                    ),
+                    radius = radius,
+                    center = center,
+                )
+            }
+        }
+    }
+
+    private fun DrawScope.drawHitEffect(
+        effect: com.nicolaielgame.game.model.HitEffect,
+        layout: IsoLayout,
+        showDamageNumbers: Boolean,
+    ) {
         val center = gridToScreen(effect.row, effect.col, layout)
         val progress = (effect.age / effect.duration).coerceIn(0f, 1f)
         val alpha = (1f - progress).coerceIn(0f, 1f)
@@ -290,7 +479,7 @@ class IsoRenderer(private val map: GameMap) {
             center = center - Offset(0f, layout.tileHeight * 0.08f),
             style = Stroke(width = 2.8f),
         )
-        if (effect.label.isNotBlank()) {
+        if (showDamageNumbers && effect.label.isNotBlank()) {
             val textOffset = center - Offset(0f, layout.tileHeight * (0.68f + progress * 0.42f))
             drawIntoCanvas { canvas ->
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -309,11 +498,18 @@ class IsoRenderer(private val map: GameMap) {
         val progress = effect.progress
         val alpha = (1f - progress).coerceIn(0f, 1f)
         val radius = when (effect.type) {
-            com.nicolaielgame.game.model.AbilityType.MeteorStrike -> layout.tileWidth * (0.28f + progress * 1.6f)
-            com.nicolaielgame.game.model.AbilityType.FreezePulse -> layout.tileWidth * (0.42f + progress * 1.9f)
-            com.nicolaielgame.game.model.AbilityType.EmergencyGold -> layout.tileWidth * (0.22f + progress * 0.9f)
+            AbilityType.MeteorStrike -> layout.tileWidth * (0.28f + progress * 1.75f)
+            AbilityType.FreezePulse -> layout.tileWidth * (0.42f + progress * 2.05f)
+            AbilityType.EmergencyGold -> layout.tileWidth * (0.22f + progress * 0.9f)
         }
 
+        if (effect.type == AbilityType.MeteorStrike && progress < 0.35f) {
+            drawCircle(
+                color = Color.White.copy(alpha = (1f - progress / 0.35f) * 0.52f),
+                radius = layout.tileWidth * (0.18f + progress),
+                center = center,
+            )
+        }
         drawCircle(
             color = effect.type.color.copy(alpha = alpha * 0.22f),
             radius = radius,
@@ -335,16 +531,27 @@ class IsoRenderer(private val map: GameMap) {
         val target = enemies.firstOrNull { it.id == projectile.targetEnemyId }
         val current = gridToScreen(projectile.row, projectile.col, layout)
         val targetOffset = target?.let { gridToScreen(it.row, it.col, layout) } ?: current
+        val glowWidth = when (projectile.towerType) {
+            TowerType.Basic -> 3.2f
+            TowerType.Sniper -> 5.2f
+            TowerType.Frost -> 4.4f
+        }
 
         drawLine(
-            color = projectile.towerType.accentColor.copy(alpha = 0.7f),
+            color = projectile.towerType.accentColor.copy(alpha = 0.22f),
             start = current,
             end = targetOffset,
-            strokeWidth = 3f,
+            strokeWidth = glowWidth * 2.4f,
+        )
+        drawLine(
+            color = projectile.towerType.accentColor.copy(alpha = 0.82f),
+            start = current,
+            end = targetOffset,
+            strokeWidth = glowWidth,
         )
         drawCircle(
             color = projectile.towerType.accentColor,
-            radius = layout.tileHeight * 0.11f,
+            radius = layout.tileHeight * if (projectile.towerType == TowerType.Sniper) 0.08f else 0.12f,
             center = current,
         )
     }

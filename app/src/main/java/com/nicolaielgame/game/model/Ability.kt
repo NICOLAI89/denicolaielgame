@@ -11,19 +11,19 @@ enum class AbilityType(
     MeteorStrike(
         title = "Meteor Strike",
         shortLabel = "Meteor",
-        cooldownSeconds = 18f,
+        cooldownSeconds = 20f,
         color = Color(0xFFFF7A45),
     ),
     FreezePulse(
         title = "Freeze Pulse",
         shortLabel = "Freeze",
-        cooldownSeconds = 20f,
+        cooldownSeconds = 18f,
         color = Color(0xFFA9F1FF),
     ),
     EmergencyGold(
         title = "Emergency Gold",
         shortLabel = "Gold",
-        cooldownSeconds = 26f,
+        cooldownSeconds = 24f,
         color = Color(0xFFF6C55D),
     ),
 }

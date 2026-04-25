@@ -19,35 +19,35 @@ enum class TowerType(
     Basic(
         title = "Basic Tower",
         shortLabel = "Basic",
-        baseCost = 32,
-        baseDamage = 28f,
-        baseRange = 2.65f,
-        baseFireInterval = 0.68f,
-        projectileSpeed = 6.8f,
+        baseCost = 30,
+        baseDamage = 31f,
+        baseRange = 2.75f,
+        baseFireInterval = 0.64f,
+        projectileSpeed = 7.1f,
         primaryColor = Color(0xFF2858D8),
         accentColor = Color(0xFF6AD8FF),
     ),
     Sniper(
         title = "Sniper Tower",
         shortLabel = "Sniper",
-        baseCost = 70,
-        baseDamage = 82f,
-        baseRange = 4.25f,
-        baseFireInterval = 1.8f,
-        projectileSpeed = 9.4f,
+        baseCost = 68,
+        baseDamage = 90f,
+        baseRange = 4.45f,
+        baseFireInterval = 1.74f,
+        projectileSpeed = 10.2f,
         primaryColor = Color(0xFF6B3FD7),
         accentColor = Color(0xFFFFD166),
     ),
     Frost(
         title = "Frost Tower",
         shortLabel = "Frost",
-        baseCost = 52,
-        baseDamage = 14f,
-        baseRange = 2.95f,
-        baseFireInterval = 0.95f,
-        projectileSpeed = 6.2f,
-        slowMultiplier = 0.56f,
-        slowDuration = 1.65f,
+        baseCost = 50,
+        baseDamage = 16f,
+        baseRange = 3.05f,
+        baseFireInterval = 0.92f,
+        projectileSpeed = 6.4f,
+        slowMultiplier = 0.52f,
+        slowDuration = 1.9f,
         primaryColor = Color(0xFF167A8F),
         accentColor = Color(0xFFA9F1FF),
     );
@@ -56,8 +56,8 @@ enum class TowerType(
         val levelIndex = (level - 1).coerceAtLeast(0)
         return TowerStats(
             damage = baseDamage * (1f + levelIndex * 0.34f),
-            range = baseRange + levelIndex * 0.22f,
-            fireInterval = (baseFireInterval * (1f - levelIndex * 0.08f)).coerceAtLeast(0.32f),
+            range = baseRange + levelIndex * 0.24f,
+            fireInterval = (baseFireInterval * (1f - levelIndex * 0.085f)).coerceAtLeast(0.3f),
             projectileSpeed = projectileSpeed + levelIndex * 0.45f,
             slowMultiplier = slowMultiplier,
             slowDuration = slowDuration + if (slowDuration > 0f) levelIndex * 0.22f else 0f,
@@ -65,7 +65,7 @@ enum class TowerType(
     }
 
     fun upgradeCostForLevel(level: Int): Int {
-        return (baseCost * (0.65f + level * 0.52f)).roundToInt()
+        return (baseCost * (0.62f + level * 0.5f)).roundToInt()
     }
 }
 

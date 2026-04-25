@@ -61,6 +61,9 @@ fun GameScreen(
     bestScore: Int,
     soundEnabled: Boolean,
     showGrid: Boolean,
+    screenShakeEnabled: Boolean,
+    damageNumbersEnabled: Boolean,
+    highContrastMode: Boolean,
     onBackToMenu: () -> Unit,
     onRunFinalized: suspend (GameRunResult) -> Unit,
 ) {
@@ -104,6 +107,7 @@ fun GameScreen(
                     difficulty = difficulty,
                     bossesDefeated = state.bossesDefeated,
                     towersPlacedByType = state.towersPlacedByType,
+                    runStats = state.runStats,
                 ),
             )
         }
@@ -126,6 +130,9 @@ fun GameScreen(
         onActivateAbility = engine::activateAbility,
         onStartNextWave = engine::startNextWave,
         showGrid = showGrid,
+        screenShakeEnabled = screenShakeEnabled,
+        damageNumbersEnabled = damageNumbersEnabled,
+        highContrastMode = highContrastMode,
     )
 }
 
@@ -144,6 +151,9 @@ private fun GameScaffold(
     onActivateAbility: (AbilityType) -> Unit,
     onStartNextWave: () -> Unit,
     showGrid: Boolean,
+    screenShakeEnabled: Boolean,
+    damageNumbersEnabled: Boolean,
+    highContrastMode: Boolean,
 ) {
     Box(
         modifier = Modifier
@@ -155,6 +165,9 @@ private fun GameScaffold(
             GameCanvas(
                 state = state,
                 showGrid = showGrid,
+                screenShakeEnabled = screenShakeEnabled,
+                damageNumbersEnabled = damageNumbersEnabled,
+                highContrastMode = highContrastMode,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -180,6 +193,7 @@ private fun GameScaffold(
             GameStatus.GameOver -> TerminalOverlay(
                 title = "Base Lost",
                 subtitle = "Score ${state.score}  Gold ${state.gold}  Wave ${state.wave.currentWave}/${state.wave.totalWaves}",
+                summaryLines = runSummaryLines(state),
                 primaryText = "Restart",
                 onPrimary = onRestart,
                 onBackToMenu = onBackToMenu,
@@ -188,12 +202,17 @@ private fun GameScaffold(
             GameStatus.Victory -> TerminalOverlay(
                 title = "Victory",
                 subtitle = "Score ${state.score}  Lives ${state.lives}  Bosses ${state.bossesDefeated}",
+                summaryLines = runSummaryLines(state),
                 primaryText = "Play Again",
                 onPrimary = onRestart,
                 onBackToMenu = onBackToMenu,
             )
 
             GameStatus.Running -> Unit
+        }
+
+        if (state.waveBannerTimeRemaining > 0f && state.waveBanner.isNotBlank() && state.status == GameStatus.Running) {
+            WaveBanner(state = state)
         }
     }
 }
@@ -267,9 +286,49 @@ private fun HudStat(label: String, value: String) {
 }
 
 @Composable
+private fun WaveBanner(state: GameState) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = 76.dp),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = if (state.wave.isBossWave) Color(0xEE4D1830) else Color(0xEE102522),
+            tonalElevation = 8.dp,
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = state.waveBanner,
+                    color = if (state.wave.isBossWave) Color(0xFFFFD166) else Color.White,
+                    fontSize = if (state.wave.isBossWave) 24.sp else 20.sp,
+                    fontWeight = FontWeight.Black,
+                    textAlign = TextAlign.Center,
+                )
+                if (state.wave.nextWavePreview.isNotBlank()) {
+                    Text(
+                        text = state.wave.nextWavePreview,
+                        color = Color(0xFFC7EDE3),
+                        fontSize = 12.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun GameCanvas(
     state: GameState,
     showGrid: Boolean,
+    screenShakeEnabled: Boolean,
+    damageNumbersEnabled: Boolean,
+    highContrastMode: Boolean,
     modifier: Modifier = Modifier,
     onCellTapped: (GridCell) -> Unit,
 ) {
@@ -286,7 +345,14 @@ private fun GameCanvas(
             }
         },
     ) {
-        renderer.draw(this, state, showGrid)
+        renderer.draw(
+            drawScope = this,
+            state = state,
+            showGrid = showGrid,
+            screenShakeEnabled = screenShakeEnabled,
+            showDamageNumbers = damageNumbersEnabled,
+            highContrast = highContrastMode,
+        )
     }
 }
 
@@ -461,6 +527,20 @@ private fun AbilityBar(
                         },
                         fontSize = 10.sp,
                     )
+                    val readyFraction = (1f - cooldown / ability.cooldownSeconds).coerceIn(0f, 1f)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .background(Color.Black.copy(alpha = 0.28f)),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(readyFraction)
+                                .height(3.dp)
+                                .background(if (enabled) Color.White else ability.color),
+                        )
+                    }
                 }
             }
         }
@@ -617,6 +697,7 @@ private fun PauseOverlay(
 private fun TerminalOverlay(
     title: String,
     subtitle: String,
+    summaryLines: List<String>,
     primaryText: String,
     onPrimary: () -> Unit,
     onBackToMenu: () -> Unit,
@@ -635,6 +716,16 @@ private fun TerminalOverlay(
             fontSize = 18.sp,
             modifier = Modifier.padding(top = 8.dp, bottom = 18.dp),
         )
+        summaryLines.forEach { line ->
+            Text(
+                text = line,
+                color = Color(0xFFC7EDE3),
+                fontSize = 13.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+        }
+        Spacer(modifier = Modifier.height(12.dp))
         Button(
             onClick = onPrimary,
             modifier = Modifier.fillMaxWidth(),
@@ -680,4 +771,13 @@ private fun OverlayShell(content: @Composable ColumnScope.() -> Unit) {
 
 private fun oneDecimal(value: Float): String {
     return (kotlin.math.round(value * 10f) / 10f).toString()
+}
+
+private fun runSummaryLines(state: GameState): List<String> {
+    val stats = state.runStats
+    return listOf(
+        "Time ${stats.timeSeconds.toInt()}s  Waves ${stats.wavesCompleted}/${state.wave.totalWaves}",
+        "Built ${stats.towersBuilt}  Upgraded ${stats.towersUpgraded}  Sold ${stats.towersSold}",
+        "Abilities ${stats.totalAbilitiesUsed}  Kills ${stats.enemiesKilled}  Bosses ${stats.bossesKilled}",
+    )
 }

@@ -19,6 +19,7 @@ data class WaveSnapshot(
     val isBossWave: Boolean = false,
     val nextWavePreview: String = "",
     val statusText: String = "Wave Ready",
+    val wavesCompleted: Int = 0,
 ) {
     val canStart: Boolean
         get() = phase == WavePhase.Ready || phase == WavePhase.Cleared
@@ -48,6 +49,11 @@ data class GameState(
     val bestScore: Int = 0,
     val towersPlacedByType: Map<TowerType, Int> = emptyMap(),
     val bossesDefeated: Int = 0,
+    val runStats: RunStats = RunStats(),
+    val shakeTimeRemaining: Float = 0f,
+    val shakeIntensity: Float = 0f,
+    val waveBanner: String = "",
+    val waveBannerTimeRemaining: Float = 0f,
     val wave: WaveSnapshot = WaveSnapshot(
         currentWave = 1,
         totalWaves = 5,

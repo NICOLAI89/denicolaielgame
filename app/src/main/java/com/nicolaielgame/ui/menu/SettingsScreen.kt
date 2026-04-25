@@ -79,6 +79,21 @@ fun SettingsScreen(
                         checked = settings.showGrid,
                         onCheckedChange = { onSettingsChanged(settings.copy(showGrid = it)) },
                     )
+                    SettingRow(
+                        label = "Screen shake",
+                        checked = settings.screenShakeEnabled,
+                        onCheckedChange = { onSettingsChanged(settings.copy(screenShakeEnabled = it)) },
+                    )
+                    SettingRow(
+                        label = "Damage numbers",
+                        checked = settings.damageNumbersEnabled,
+                        onCheckedChange = { onSettingsChanged(settings.copy(damageNumbersEnabled = it)) },
+                    )
+                    SettingRow(
+                        label = "High contrast",
+                        checked = settings.highContrastMode,
+                        onCheckedChange = { onSettingsChanged(settings.copy(highContrastMode = it)) },
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(14.dp))

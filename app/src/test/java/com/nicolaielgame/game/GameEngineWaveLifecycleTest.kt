@@ -22,6 +22,7 @@ class GameEngineWaveLifecycleTest {
         engine.tick(0.1f)
 
         assertEquals(GameStatus.Victory, engine.state.value.status)
+        assertEquals(1, engine.state.value.runStats.wavesCompleted)
     }
 
     private fun testLevelWithEmptyFinalWave(): LevelDefinition {

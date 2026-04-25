@@ -14,6 +14,7 @@ import com.nicolaielgame.game.model.LevelCatalog
 import com.nicolaielgame.game.model.LevelDefinition
 import com.nicolaielgame.game.model.Projectile
 import com.nicolaielgame.game.model.RangePreview
+import com.nicolaielgame.game.model.RunStats
 import com.nicolaielgame.game.model.TargetingMode
 import com.nicolaielgame.game.model.Tower
 import com.nicolaielgame.game.model.TowerType
@@ -151,6 +152,7 @@ class GameEngine(
             rangePreview = RangePreview(upgraded.cell, upgraded.range, upgraded.type.accentColor),
             placementMessage = "${upgraded.type.shortLabel} upgraded to level ${upgraded.level}.",
             placementAccepted = true,
+            runStats = current.runStats.copy(towersUpgraded = current.runStats.towersUpgraded + 1),
         )
         soundPlayer.towerUpgraded()
     }
@@ -172,6 +174,7 @@ class GameEngine(
             rangePreview = null,
             placementMessage = "Sold ${tower.type.shortLabel} for ${tower.sellRefund()}g.",
             placementAccepted = true,
+            runStats = current.runStats.copy(towersSold = current.runStats.towersSold + 1),
         )
         soundPlayer.towerSold()
     }
@@ -180,6 +183,13 @@ class GameEngine(
         if (mutableState.value.status != GameStatus.Running) return
         if (waveManager.startNextWave()) {
             val snapshot = waveManager.snapshot(mutableState.value.enemies.size)
+            val banner = if (snapshot.isBossWave) {
+                "BOSS WAVE ${snapshot.currentWave}"
+            } else if (snapshot.currentWave == snapshot.totalWaves) {
+                "FINAL WAVE"
+            } else {
+                "WAVE ${snapshot.currentWave}"
+            }
             mutableState.value = mutableState.value.copy(
                 placementMessage = if (snapshot.isBossWave) {
                     "Boss wave ${snapshot.currentWave}: ${snapshot.nextWavePreview}."
@@ -188,6 +198,8 @@ class GameEngine(
                 },
                 placementAccepted = true,
                 wave = snapshot,
+                waveBanner = banner,
+                waveBannerTimeRemaining = if (snapshot.isBossWave) 2.2f else 1.25f,
             )
             soundPlayer.waveStart()
         }
@@ -210,6 +222,9 @@ class GameEngine(
         var gold = current.gold
         var score = current.score
         var bossesDefeated = current.bossesDefeated
+        var runStats = current.runStats.withAbilityUsed(type)
+        var shakeTime = current.shakeTimeRemaining
+        var shakeIntensity = current.shakeIntensity
         val hitEffects = mutableListOf<HitEffect>()
         val abilityEffects = mutableListOf<AbilityEffect>()
 
@@ -238,7 +253,7 @@ class GameEngine(
                             label = "-${AbilitySystem.MeteorDamage.toInt()}",
                             duration = 0.58f,
                         )
-                        enemy.copy(health = enemy.health - AbilitySystem.MeteorDamage)
+                        enemy.copy(health = enemy.health - AbilitySystem.MeteorDamage, hitFlash = 0.2f)
                     } else {
                         enemy
                     }
@@ -248,7 +263,10 @@ class GameEngine(
                     type = type,
                     row = center.row,
                     col = center.col,
+                    duration = 1.05f,
                 )
+                shakeTime = 0.32f
+                shakeIntensity = 5.2f
                 soundPlayer.enemyHit()
             }
 
@@ -325,7 +343,12 @@ class GameEngine(
                 if (enemy.health <= 0f) {
                     gold += enemy.reward
                     score += enemy.scoreValue
-                    if (enemy.type.isBoss) bossesDefeated++
+                    runStats = runStats.withKill(enemy.type)
+                    if (enemy.type.isBoss) {
+                        bossesDefeated++
+                        shakeTime = maxOf(shakeTime, 0.38f)
+                        shakeIntensity = maxOf(shakeIntensity, 6.4f)
+                    }
                     hitEffects += HitEffect(
                         id = nextHitEffectId++,
                         row = enemy.row,
@@ -350,6 +373,9 @@ class GameEngine(
             hitEffects = current.hitEffects + hitEffects,
             abilityEffects = current.abilityEffects + abilityEffects,
             abilities = AbilitySystem.spendAbility(current.abilities, type),
+            runStats = runStats,
+            shakeTimeRemaining = shakeTime,
+            shakeIntensity = shakeIntensity,
             placementMessage = "${type.title} activated.",
             placementAccepted = true,
         )
@@ -441,6 +467,7 @@ class GameEngine(
             placementAccepted = true,
             gold = current.gold - type.baseCost,
             towersPlacedByType = current.towersPlacedByType + (type to ((current.towersPlacedByType[type] ?: 0) + 1)),
+            runStats = current.runStats.copy(towersBuilt = current.runStats.towersBuilt + 1),
         )
         soundPlayer.towerPlaced()
     }
@@ -454,6 +481,9 @@ class GameEngine(
         var gold = current.gold
         var score = current.score
         var status = current.status
+        var shakeTime = (current.shakeTimeRemaining - delta).coerceAtLeast(0f)
+        var shakeIntensity = if (shakeTime > 0f) current.shakeIntensity else 0f
+        var runStats = current.runStats.copy(timeSeconds = current.runStats.timeSeconds + delta)
         val blockedCells = current.towers.map { it.cell }.toSet()
 
         val abilities = AbilitySystem.tickCooldowns(current.abilities, delta)
@@ -467,6 +497,7 @@ class GameEngine(
                 enemy.copy(
                     health = regeneratedHealth,
                     slowTimeRemaining = (enemy.slowTimeRemaining - delta).coerceAtLeast(0f),
+                    hitFlash = (enemy.hitFlash - delta).coerceAtLeast(0f),
                 )
             }
             .toMutableList()
@@ -482,6 +513,8 @@ class GameEngine(
             val move = moveEnemy(enemy, delta, blockedCells)
             if (move.reachedBase) {
                 lives--
+                shakeTime = maxOf(shakeTime, 0.28f)
+                shakeIntensity = maxOf(shakeIntensity, 4.5f)
                 soundPlayer.baseHit()
             } else {
                 movedEnemies += move.enemy
@@ -505,7 +538,10 @@ class GameEngine(
                 score += enemy.scoreValue
                 if (enemy.type.isBoss) {
                     bossesDefeated++
+                    shakeTime = maxOf(shakeTime, 0.42f)
+                    shakeIntensity = maxOf(shakeIntensity, 6.8f)
                 }
+                runStats = runStats.withKill(enemy.type)
                 deathEffects += HitEffect(
                     id = nextHitEffectId++,
                     row = enemy.row,
@@ -527,6 +563,8 @@ class GameEngine(
             deltaSeconds = delta,
         )
         waveManager.completeWaveIfCleared(hasAliveEnemies = enemies.isNotEmpty())
+        val waveSnapshot = waveManager.snapshot(aliveEnemies = enemies.size)
+        runStats = runStats.copy(wavesCompleted = maxOf(runStats.wavesCompleted, waveSnapshot.wavesCompleted))
 
         if (lives <= 0) {
             status = GameStatus.GameOver
@@ -535,6 +573,8 @@ class GameEngine(
             status = GameStatus.Victory
             score += difficulty.applyScore(250 + level.id * 75)
             gold += 50
+            shakeTime = maxOf(shakeTime, 0.35f)
+            shakeIntensity = maxOf(shakeIntensity, 4.2f)
             soundPlayer.victory()
         }
 
@@ -544,6 +584,7 @@ class GameEngine(
         val agedAbilityEffects = current.abilityEffects
             .map { it.copy(age = it.age + delta) }
             .filter { it.age < it.duration }
+        val bannerTime = (current.waveBannerTimeRemaining - delta).coerceAtLeast(0f)
 
         mutableState.value = current.copy(
             status = status,
@@ -553,12 +594,16 @@ class GameEngine(
             hitEffects = agedHitEffects + projectileResult.hitEffects + deathEffects,
             abilityEffects = agedAbilityEffects,
             abilities = abilities,
+            runStats = runStats,
+            shakeTimeRemaining = shakeTime,
+            shakeIntensity = shakeIntensity,
+            waveBannerTimeRemaining = bannerTime,
             lives = lives.coerceAtLeast(0),
             gold = gold,
             score = score,
             bossesDefeated = bossesDefeated,
-            pathPreview = pathFinder.findPath(blockedCells).orEmpty(),
-            wave = waveManager.snapshot(aliveEnemies = enemies.size),
+            pathPreview = current.pathPreview,
+            wave = waveSnapshot,
         )
     }
 
@@ -573,6 +618,7 @@ class GameEngine(
             selectedTowerType = TowerType.Basic,
             pathPreview = pathFinder.findPath(emptySet()).orEmpty(),
             wave = waveManager.snapshot(aliveEnemies = 0),
+            runStats = RunStats(levelId = level.id, difficulty = difficulty),
         )
     }
 
@@ -698,6 +744,7 @@ class GameEngine(
                     col = target.col,
                     color = projectile.towerType.accentColor,
                     label = "-${projectile.damage.toInt()}",
+                    duration = if (target.type.isBoss) 0.72f else 0.46f,
                 )
                 soundPlayer.enemyHit()
             } else {
@@ -737,6 +784,7 @@ class GameEngine(
                     health = enemy.health - damage,
                     slowMultiplier = resistedSlow?.let { min(enemy.slowMultiplier, it) } ?: enemy.slowMultiplier,
                     slowTimeRemaining = maxOf(enemy.slowTimeRemaining, resistedDuration),
+                    hitFlash = if (damage > 0f) 0.18f else enemy.hitFlash,
                 )
             }
         }

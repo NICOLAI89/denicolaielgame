@@ -13,12 +13,12 @@ enum class DifficultyMode(
 ) {
     Easy(
         title = "Easy",
-        enemyHealthMultiplier = 0.82f,
-        enemySpeedMultiplier = 0.9f,
-        rewardMultiplier = 1.15f,
+        enemyHealthMultiplier = 0.78f,
+        enemySpeedMultiplier = 0.88f,
+        rewardMultiplier = 1.2f,
         scoreMultiplier = 0.85f,
-        startingGoldMultiplier = 1.22f,
-        livesBonus = 5,
+        startingGoldMultiplier = 1.28f,
+        livesBonus = 6,
     ),
     Normal(
         title = "Normal",
@@ -31,11 +31,11 @@ enum class DifficultyMode(
     ),
     Hard(
         title = "Hard",
-        enemyHealthMultiplier = 1.28f,
-        enemySpeedMultiplier = 1.12f,
-        rewardMultiplier = 0.88f,
+        enemyHealthMultiplier = 1.22f,
+        enemySpeedMultiplier = 1.1f,
+        rewardMultiplier = 0.9f,
         scoreMultiplier = 1.35f,
-        startingGoldMultiplier = 0.86f,
+        startingGoldMultiplier = 0.9f,
         livesBonus = -3,
     );
 

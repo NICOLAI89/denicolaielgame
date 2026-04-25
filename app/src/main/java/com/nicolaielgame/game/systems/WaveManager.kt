@@ -53,6 +53,14 @@ class WaveManager(private val waves: List<WaveDefinition>) {
     val canStartNextWave: Boolean
         get() = phase == WavePhase.Ready || phase == WavePhase.Cleared
 
+    val completedWaves: Int
+        get() = when (phase) {
+            WavePhase.Ready -> 0
+            WavePhase.InProgress -> currentWaveIndex
+            WavePhase.Cleared -> currentWaveIndex
+            WavePhase.Finished -> waves.size
+        }
+
     fun reset() {
         currentWaveIndex = 0
         spawnQueue = emptyList()
@@ -138,6 +146,7 @@ class WaveManager(private val waves: List<WaveDefinition>) {
             isBossWave = activeWave?.isBossWave == true,
             nextWavePreview = activeWave?.previewText().orEmpty(),
             statusText = statusText,
+            wavesCompleted = completedWaves,
         )
     }
 }

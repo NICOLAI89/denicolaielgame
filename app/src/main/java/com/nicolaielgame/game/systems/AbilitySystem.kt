@@ -6,12 +6,12 @@ import com.nicolaielgame.game.model.Enemy
 import com.nicolaielgame.game.model.gridDistance
 
 object AbilitySystem {
-    const val MeteorDamage = 115f
-    const val MeteorRadius = 1.85f
-    const val FreezeRadius = 2.6f
-    const val FreezeMultiplier = 0.38f
-    const val FreezeDuration = 3.2f
-    const val EmergencyGoldAmount = 60
+    const val MeteorDamage = 135f
+    const val MeteorRadius = 2.05f
+    const val FreezeRadius = 2.8f
+    const val FreezeMultiplier = 0.34f
+    const val FreezeDuration = 3.45f
+    const val EmergencyGoldAmount = 55
 
     fun tickCooldowns(state: AbilityState, deltaSeconds: Float): AbilityState {
         return state.copy(

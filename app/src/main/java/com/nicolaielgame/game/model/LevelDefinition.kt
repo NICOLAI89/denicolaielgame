@@ -53,10 +53,10 @@ object LevelCatalog {
                 buildLockedCells = locked,
                 scenicPath = scenicPath,
             ),
-            startingGold = 145,
-            startingLives = 20,
+            startingGold = 160,
+            startingLives = 22,
             waves = listOf(
-                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 7)), spawnInterval = 0.86f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 6)), spawnInterval = 0.9f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 7), WaveEnemyGroup(EnemyType.Fast, 3)), spawnInterval = 0.78f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 8), WaveEnemyGroup(EnemyType.Normal, 5)), spawnInterval = 0.72f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 8), WaveEnemyGroup(EnemyType.Tank, 2)), spawnInterval = 0.74f),
@@ -89,7 +89,7 @@ object LevelCatalog {
                 buildLockedCells = locked,
                 scenicPath = scenicPath,
             ),
-            startingGold = 160,
+            startingGold = 170,
             startingLives = 18,
             waves = listOf(
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 8), WaveEnemyGroup(EnemyType.Fast, 4)), spawnInterval = 0.76f),
@@ -130,7 +130,7 @@ object LevelCatalog {
                 buildLockedCells = locked,
                 scenicPath = scenicPath,
             ),
-            startingGold = 185,
+            startingGold = 195,
             startingLives = 16,
             waves = listOf(
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 10), WaveEnemyGroup(EnemyType.Normal, 6)), spawnInterval = 0.62f),
@@ -169,7 +169,7 @@ object LevelCatalog {
                 buildLockedCells = locked,
                 scenicPath = scenicPath,
             ),
-            startingGold = 210,
+            startingGold = 220,
             startingLives = 15,
             waves = listOf(
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 14), WaveEnemyGroup(EnemyType.Normal, 10)), spawnInterval = 0.52f),
@@ -211,8 +211,8 @@ object LevelCatalog {
                 buildLockedCells = locked,
                 scenicPath = scenicPath,
             ),
-            startingGold = 230,
-            startingLives = 14,
+            startingGold = 245,
+            startingLives = 15,
             waves = listOf(
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 16), WaveEnemyGroup(EnemyType.Normal, 12)), spawnInterval = 0.5f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Tank, 7), WaveEnemyGroup(EnemyType.Fast, 14)), spawnInterval = 0.54f),

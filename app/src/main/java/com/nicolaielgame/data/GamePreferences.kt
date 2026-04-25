@@ -106,6 +106,9 @@ class GamePreferences(context: Context) {
                 soundEnabled = preferences[Keys.SoundEnabled] ?: true,
                 musicEnabled = preferences[Keys.MusicEnabled] ?: false,
                 showGrid = preferences[Keys.ShowGrid] ?: true,
+                screenShakeEnabled = preferences[Keys.ScreenShakeEnabled] ?: true,
+                damageNumbersEnabled = preferences[Keys.DamageNumbersEnabled] ?: true,
+                highContrastMode = preferences[Keys.HighContrastMode] ?: false,
                 lastDifficulty = preferences[Keys.LastDifficulty]
                     ?.let { runCatching { DifficultyMode.valueOf(it) }.getOrNull() }
                     ?: DifficultyMode.Normal,
@@ -182,6 +185,9 @@ class GamePreferences(context: Context) {
             preferences[Keys.SoundEnabled] = settings.soundEnabled
             preferences[Keys.MusicEnabled] = settings.musicEnabled
             preferences[Keys.ShowGrid] = settings.showGrid
+            preferences[Keys.ScreenShakeEnabled] = settings.screenShakeEnabled
+            preferences[Keys.DamageNumbersEnabled] = settings.damageNumbersEnabled
+            preferences[Keys.HighContrastMode] = settings.highContrastMode
             preferences[Keys.LastDifficulty] = settings.lastDifficulty.name
         }
     }
@@ -272,6 +278,9 @@ class GamePreferences(context: Context) {
         val SoundEnabled = booleanPreferencesKey("sound_enabled")
         val MusicEnabled = booleanPreferencesKey("music_enabled")
         val ShowGrid = booleanPreferencesKey("show_grid")
+        val ScreenShakeEnabled = booleanPreferencesKey("screen_shake_enabled")
+        val DamageNumbersEnabled = booleanPreferencesKey("damage_numbers_enabled")
+        val HighContrastMode = booleanPreferencesKey("high_contrast_mode")
         val LastDifficulty = stringPreferencesKey("last_difficulty")
         val UnlockedAchievements = stringSetPreferencesKey("unlocked_achievements")
         val TutorialCompleted = booleanPreferencesKey("tutorial_completed")

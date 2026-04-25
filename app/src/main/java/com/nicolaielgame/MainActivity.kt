@@ -170,6 +170,9 @@ private fun DenicolaielApp(preferences: GamePreferences) {
                 bestScore = progress.bestScoreForLevel(selectedLevel.id),
                 soundEnabled = settings.soundEnabled,
                 showGrid = settings.showGrid,
+                screenShakeEnabled = settings.screenShakeEnabled,
+                damageNumbersEnabled = settings.damageNumbersEnabled,
+                highContrastMode = settings.highContrastMode,
                 onBackToMenu = { screen = RootScreen.LevelSelect },
                 onRunFinalized = scoreSaver::saveFinalResult,
             )
