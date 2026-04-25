@@ -2,6 +2,8 @@ package com.nicolaielgame.game.engine
 
 import com.nicolaielgame.game.model.Enemy
 import com.nicolaielgame.game.model.EnemyType
+import com.nicolaielgame.game.model.AbilityEffect
+import com.nicolaielgame.game.model.AbilityType
 import com.nicolaielgame.game.model.DifficultyMode
 import com.nicolaielgame.game.model.GameMap
 import com.nicolaielgame.game.model.GameState
@@ -12,16 +14,19 @@ import com.nicolaielgame.game.model.LevelCatalog
 import com.nicolaielgame.game.model.LevelDefinition
 import com.nicolaielgame.game.model.Projectile
 import com.nicolaielgame.game.model.RangePreview
+import com.nicolaielgame.game.model.TargetingMode
 import com.nicolaielgame.game.model.Tower
 import com.nicolaielgame.game.model.TowerType
-import com.nicolaielgame.game.model.gridDistance
 import com.nicolaielgame.game.pathfinding.PathFinder
+import com.nicolaielgame.game.systems.AbilitySystem
 import com.nicolaielgame.game.systems.SilentSoundPlayer
 import com.nicolaielgame.game.systems.SoundPlayer
+import com.nicolaielgame.game.systems.TargetingSelector
 import com.nicolaielgame.game.systems.WaveManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.min
 import kotlin.math.sqrt
 
 class GameEngine(
@@ -40,6 +45,7 @@ class GameEngine(
     private var nextEnemyId = 1
     private var nextProjectileId = 1
     private var nextHitEffectId = 1
+    private var nextAbilityEffectId = 1
 
     val state: StateFlow<GameState> = mutableState.asStateFlow()
 
@@ -57,6 +63,7 @@ class GameEngine(
         nextEnemyId = 1
         nextProjectileId = 1
         nextHitEffectId = 1
+        nextAbilityEffectId = 1
         mutableState.value = createInitialState(bestScore)
     }
 
@@ -98,6 +105,21 @@ class GameEngine(
             selectedTowerId = tower.id,
             rangePreview = RangePreview(tower.cell, tower.range, tower.type.accentColor),
             placementMessage = "${tower.type.shortLabel} tower selected.",
+            placementAccepted = true,
+        )
+    }
+
+    fun setTowerTargetingMode(towerId: Int, mode: TargetingMode) {
+        val current = mutableState.value
+        val tower = current.towers.firstOrNull { it.id == towerId } ?: return
+        mutableState.value = current.copy(
+            towers = current.towers.map { existing ->
+                if (existing.id == towerId) existing.copy(targetingMode = mode) else existing
+            },
+            selectedTowerId = towerId,
+            selectedCell = tower.cell,
+            rangePreview = RangePreview(tower.cell, tower.range, tower.type.accentColor),
+            placementMessage = "${tower.type.shortLabel} targeting ${mode.title}.",
             placementAccepted = true,
         )
     }
@@ -160,7 +182,7 @@ class GameEngine(
             val snapshot = waveManager.snapshot(mutableState.value.enemies.size)
             mutableState.value = mutableState.value.copy(
                 placementMessage = if (snapshot.isBossWave) {
-                    "Boss wave ${snapshot.currentWave} started."
+                    "Boss wave ${snapshot.currentWave}: ${snapshot.nextWavePreview}."
                 } else {
                     "Wave ${snapshot.currentWave} started."
                 },
@@ -169,6 +191,168 @@ class GameEngine(
             )
             soundPlayer.waveStart()
         }
+    }
+
+    fun activateAbility(type: AbilityType) {
+        val current = mutableState.value
+        if (current.status != GameStatus.Running) return
+
+        if (!current.abilities.canUse(type)) {
+            mutableState.value = current.copy(
+                placementMessage = "${type.shortLabel} is recharging.",
+                placementAccepted = false,
+            )
+            soundPlayer.placementDenied()
+            return
+        }
+
+        var enemies = current.enemies
+        var gold = current.gold
+        var score = current.score
+        var bossesDefeated = current.bossesDefeated
+        val hitEffects = mutableListOf<HitEffect>()
+        val abilityEffects = mutableListOf<AbilityEffect>()
+
+        when (type) {
+            AbilityType.MeteorStrike -> {
+                val center = abilityCenterEnemy(enemies)
+                if (center == null) {
+                    mutableState.value = current.copy(
+                        placementMessage = "Meteor needs enemies on the board.",
+                        placementAccepted = false,
+                    )
+                    soundPlayer.placementDenied()
+                    return
+                }
+                val affectedIds = AbilitySystem
+                    .enemiesInRadius(enemies, center.row, center.col, AbilitySystem.MeteorRadius)
+                    .map { it.id }
+                    .toSet()
+                enemies = enemies.map { enemy ->
+                    if (enemy.id in affectedIds) {
+                        hitEffects += HitEffect(
+                            id = nextHitEffectId++,
+                            row = enemy.row,
+                            col = enemy.col,
+                            color = type.color,
+                            label = "-${AbilitySystem.MeteorDamage.toInt()}",
+                            duration = 0.58f,
+                        )
+                        enemy.copy(health = enemy.health - AbilitySystem.MeteorDamage)
+                    } else {
+                        enemy
+                    }
+                }
+                abilityEffects += AbilityEffect(
+                    id = nextAbilityEffectId++,
+                    type = type,
+                    row = center.row,
+                    col = center.col,
+                )
+                soundPlayer.enemyHit()
+            }
+
+            AbilityType.FreezePulse -> {
+                val center = abilityCenterEnemy(enemies)
+                if (center == null) {
+                    mutableState.value = current.copy(
+                        placementMessage = "Freeze needs enemies on the board.",
+                        placementAccepted = false,
+                    )
+                    soundPlayer.placementDenied()
+                    return
+                }
+                val affectedIds = AbilitySystem
+                    .enemiesInRadius(enemies, center.row, center.col, AbilitySystem.FreezeRadius)
+                    .map { it.id }
+                    .toSet()
+                enemies = enemies.map { enemy ->
+                    if (enemy.id in affectedIds) {
+                        val slowStrength = (1f - AbilitySystem.FreezeMultiplier) * enemy.type.slowVulnerability
+                        enemy.copy(
+                            slowMultiplier = min(enemy.slowMultiplier, 1f - slowStrength),
+                            slowTimeRemaining = maxOf(
+                                enemy.slowTimeRemaining,
+                                AbilitySystem.FreezeDuration * enemy.type.slowVulnerability,
+                            ),
+                        )
+                    } else {
+                        enemy
+                    }
+                }
+                hitEffects += HitEffect(
+                    id = nextHitEffectId++,
+                    row = center.row,
+                    col = center.col,
+                    color = type.color,
+                    label = "Slow",
+                    duration = 0.68f,
+                )
+                abilityEffects += AbilityEffect(
+                    id = nextAbilityEffectId++,
+                    type = type,
+                    row = center.row,
+                    col = center.col,
+                    duration = 0.9f,
+                )
+                soundPlayer.enemyHit()
+            }
+
+            AbilityType.EmergencyGold -> {
+                gold += AbilitySystem.EmergencyGoldAmount
+                hitEffects += HitEffect(
+                    id = nextHitEffectId++,
+                    row = map.base.row.toFloat(),
+                    col = map.base.col.toFloat(),
+                    color = type.color,
+                    label = "+${AbilitySystem.EmergencyGoldAmount}g",
+                    duration = 0.72f,
+                )
+                abilityEffects += AbilityEffect(
+                    id = nextAbilityEffectId++,
+                    type = type,
+                    row = map.base.row.toFloat(),
+                    col = map.base.col.toFloat(),
+                    duration = 0.65f,
+                )
+                soundPlayer.towerSold()
+            }
+        }
+
+        if (enemies.any { it.health <= 0f }) {
+            val survivingEnemies = mutableListOf<Enemy>()
+            for (enemy in enemies) {
+                if (enemy.health <= 0f) {
+                    gold += enemy.reward
+                    score += enemy.scoreValue
+                    if (enemy.type.isBoss) bossesDefeated++
+                    hitEffects += HitEffect(
+                        id = nextHitEffectId++,
+                        row = enemy.row,
+                        col = enemy.col,
+                        color = enemy.type.accentColor,
+                        label = "+${enemy.reward}",
+                        duration = if (enemy.type.isBoss) 0.8f else 0.48f,
+                    )
+                    soundPlayer.enemyDown()
+                } else {
+                    survivingEnemies += enemy
+                }
+            }
+            enemies = survivingEnemies
+        }
+
+        mutableState.value = current.copy(
+            enemies = enemies,
+            gold = gold,
+            score = score,
+            bossesDefeated = bossesDefeated,
+            hitEffects = current.hitEffects + hitEffects,
+            abilityEffects = current.abilityEffects + abilityEffects,
+            abilities = AbilitySystem.spendAbility(current.abilities, type),
+            placementMessage = "${type.title} activated.",
+            placementAccepted = true,
+        )
     }
 
     fun pause() {
@@ -272,8 +456,19 @@ class GameEngine(
         var status = current.status
         val blockedCells = current.towers.map { it.cell }.toSet()
 
+        val abilities = AbilitySystem.tickCooldowns(current.abilities, delta)
         var enemies = current.enemies
-            .map { it.copy(slowTimeRemaining = (it.slowTimeRemaining - delta).coerceAtLeast(0f)) }
+            .map { enemy ->
+                val regeneratedHealth = if (enemy.health > 0f && enemy.type.regenPerSecond > 0f) {
+                    min(enemy.maxHealth, enemy.health + enemy.type.regenPerSecond * delta)
+                } else {
+                    enemy.health
+                }
+                enemy.copy(
+                    health = regeneratedHealth,
+                    slowTimeRemaining = (enemy.slowTimeRemaining - delta).coerceAtLeast(0f),
+                )
+            }
             .toMutableList()
 
         val spawnRequests = waveManager.update(delta)
@@ -346,6 +541,9 @@ class GameEngine(
         val agedHitEffects = current.hitEffects
             .map { it.copy(age = it.age + delta) }
             .filter { it.age < it.duration }
+        val agedAbilityEffects = current.abilityEffects
+            .map { it.copy(age = it.age + delta) }
+            .filter { it.age < it.duration }
 
         mutableState.value = current.copy(
             status = status,
@@ -353,6 +551,8 @@ class GameEngine(
             enemies = enemies,
             projectiles = projectileResult.projectiles + towerFireResult.projectiles,
             hitEffects = agedHitEffects + projectileResult.hitEffects + deathEffects,
+            abilityEffects = agedAbilityEffects,
+            abilities = abilities,
             lives = lives.coerceAtLeast(0),
             gold = gold,
             score = score,
@@ -389,6 +589,14 @@ class GameEngine(
             speed = difficulty.applyEnemySpeed(enemyType.speed),
             reward = difficulty.applyReward(enemyType.reward),
             scoreValue = difficulty.applyScore(enemyType.scoreValue),
+        )
+    }
+
+    private fun abilityCenterEnemy(enemies: List<Enemy>): Enemy? {
+        return enemies.maxWithOrNull(
+            compareBy<Enemy> { if (it.type.isBoss) 1 else 0 }
+                .thenBy { it.pathIndex }
+                .thenBy { it.health },
         )
     }
 
@@ -521,10 +729,14 @@ class GameEngine(
                 val strongestSlow = hits
                     .filter { it.slowDuration > 0f && it.slowMultiplier < 1f }
                     .minByOrNull { it.slowMultiplier }
+                val resistedSlow = strongestSlow?.let { slow ->
+                    1f - ((1f - slow.slowMultiplier) * enemy.type.slowVulnerability)
+                }
+                val resistedDuration = strongestSlow?.slowDuration?.times(enemy.type.slowVulnerability) ?: 0f
                 enemy.copy(
                     health = enemy.health - damage,
-                    slowMultiplier = strongestSlow?.slowMultiplier ?: enemy.slowMultiplier,
-                    slowTimeRemaining = maxOf(enemy.slowTimeRemaining, strongestSlow?.slowDuration ?: 0f),
+                    slowMultiplier = resistedSlow?.let { min(enemy.slowMultiplier, it) } ?: enemy.slowMultiplier,
+                    slowTimeRemaining = maxOf(enemy.slowTimeRemaining, resistedDuration),
                 )
             }
         }
@@ -545,9 +757,7 @@ class GameEngine(
                 continue
             }
 
-            val target = enemies
-                .filter { enemy -> gridDistance(enemy.row, enemy.col, cooledTower.cell) <= cooledTower.range }
-                .minByOrNull { enemy -> enemy.pathIndex }
+            val target = TargetingSelector.selectTarget(cooledTower, enemies)
 
             if (target == null) {
                 updatedTowers += cooledTower

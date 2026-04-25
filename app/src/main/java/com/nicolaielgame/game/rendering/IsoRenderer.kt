@@ -48,6 +48,9 @@ class IsoRenderer(private val map: GameMap) {
         state.hitEffects.forEach { effect ->
             drawHitEffect(effect, layout)
         }
+        state.abilityEffects.forEach { effect ->
+            drawAbilityEffect(effect, layout)
+        }
         state.projectiles.forEach { projectile ->
             drawProjectile(projectile, state.enemies, layout)
         }
@@ -299,6 +302,29 @@ class IsoRenderer(private val map: GameMap) {
                 canvas.nativeCanvas.drawText(effect.label, textOffset.x, textOffset.y, paint)
             }
         }
+    }
+
+    private fun DrawScope.drawAbilityEffect(effect: com.nicolaielgame.game.model.AbilityEffect, layout: IsoLayout) {
+        val center = gridToScreen(effect.row, effect.col, layout)
+        val progress = effect.progress
+        val alpha = (1f - progress).coerceIn(0f, 1f)
+        val radius = when (effect.type) {
+            com.nicolaielgame.game.model.AbilityType.MeteorStrike -> layout.tileWidth * (0.28f + progress * 1.6f)
+            com.nicolaielgame.game.model.AbilityType.FreezePulse -> layout.tileWidth * (0.42f + progress * 1.9f)
+            com.nicolaielgame.game.model.AbilityType.EmergencyGold -> layout.tileWidth * (0.22f + progress * 0.9f)
+        }
+
+        drawCircle(
+            color = effect.type.color.copy(alpha = alpha * 0.22f),
+            radius = radius,
+            center = center,
+        )
+        drawCircle(
+            color = effect.type.color.copy(alpha = alpha * 0.75f),
+            radius = radius,
+            center = center,
+            style = Stroke(width = 4f),
+        )
     }
 
     private fun DrawScope.drawProjectile(

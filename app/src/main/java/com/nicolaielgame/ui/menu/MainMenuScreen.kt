@@ -36,9 +36,12 @@ fun MainMenuScreen(
     bestScore: Int,
     lastUnlockedLevel: Int,
     unlockedAchievements: Int,
+    activeProfile: Int,
     onStartGame: () -> Unit,
     onSettings: () -> Unit,
     onAchievements: () -> Unit,
+    onProfiles: () -> Unit,
+    onTutorial: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -86,6 +89,7 @@ fun MainMenuScreen(
                     MenuStat(label = "Best", value = bestScore.toString())
                     MenuStat(label = "Level", value = lastUnlockedLevel.toString())
                     MenuStat(label = "Badges", value = unlockedAchievements.toString())
+                    MenuStat(label = "Profile", value = activeProfile.toString())
                 }
             }
 
@@ -122,6 +126,30 @@ fun MainMenuScreen(
                     shape = RoundedCornerShape(8.dp),
                 ) {
                     Text("Settings")
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Button(
+                    onClick = onProfiles,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text("Profiles")
+                }
+                Button(
+                    onClick = onTutorial,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Text("Tutorial")
                 }
             }
         }

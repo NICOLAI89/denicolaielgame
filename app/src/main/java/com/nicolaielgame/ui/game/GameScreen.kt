@@ -41,12 +41,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nicolaielgame.game.engine.GameEngine
+import com.nicolaielgame.game.model.AbilityType
 import com.nicolaielgame.game.model.DifficultyMode
 import com.nicolaielgame.game.model.GameRunResult
 import com.nicolaielgame.game.model.GameState
 import com.nicolaielgame.game.model.GameStatus
 import com.nicolaielgame.game.model.GridCell
 import com.nicolaielgame.game.model.LevelDefinition
+import com.nicolaielgame.game.model.TargetingMode
 import com.nicolaielgame.game.model.TowerType
 import com.nicolaielgame.game.model.WavePhase
 import com.nicolaielgame.game.rendering.IsoRenderer
@@ -120,6 +122,8 @@ fun GameScreen(
         onSelectTowerType = engine::selectTowerType,
         onUpgradeTower = engine::upgradeTower,
         onSellTower = engine::sellTower,
+        onSetTowerTargetingMode = engine::setTowerTargetingMode,
+        onActivateAbility = engine::activateAbility,
         onStartNextWave = engine::startNextWave,
         showGrid = showGrid,
     )
@@ -136,6 +140,8 @@ private fun GameScaffold(
     onSelectTowerType: (TowerType) -> Unit,
     onUpgradeTower: (Int) -> Unit,
     onSellTower: (Int) -> Unit,
+    onSetTowerTargetingMode: (Int, TargetingMode) -> Unit,
+    onActivateAbility: (AbilityType) -> Unit,
     onStartNextWave: () -> Unit,
     showGrid: Boolean,
 ) {
@@ -159,6 +165,8 @@ private fun GameScaffold(
                 onSelectTowerType = onSelectTowerType,
                 onUpgradeTower = onUpgradeTower,
                 onSellTower = onSellTower,
+                onSetTowerTargetingMode = onSetTowerTargetingMode,
+                onActivateAbility = onActivateAbility,
             )
         }
 
@@ -171,7 +179,7 @@ private fun GameScaffold(
 
             GameStatus.GameOver -> TerminalOverlay(
                 title = "Base Lost",
-                subtitle = "Score ${state.score}",
+                subtitle = "Score ${state.score}  Gold ${state.gold}  Wave ${state.wave.currentWave}/${state.wave.totalWaves}",
                 primaryText = "Restart",
                 onPrimary = onRestart,
                 onBackToMenu = onBackToMenu,
@@ -179,7 +187,7 @@ private fun GameScaffold(
 
             GameStatus.Victory -> TerminalOverlay(
                 title = "Victory",
-                subtitle = "Score ${state.score}",
+                subtitle = "Score ${state.score}  Lives ${state.lives}  Bosses ${state.bossesDefeated}",
                 primaryText = "Play Again",
                 onPrimary = onRestart,
                 onBackToMenu = onBackToMenu,
@@ -288,6 +296,8 @@ private fun BottomBar(
     onSelectTowerType: (TowerType) -> Unit,
     onUpgradeTower: (Int) -> Unit,
     onSellTower: (Int) -> Unit,
+    onSetTowerTargetingMode: (Int, TargetingMode) -> Unit,
+    onActivateAbility: (AbilityType) -> Unit,
 ) {
     Surface(
         color = Color(0xEE102522),
@@ -307,6 +317,11 @@ private fun BottomBar(
                 state = state,
                 onUpgradeTower = onUpgradeTower,
                 onSellTower = onSellTower,
+                onSetTowerTargetingMode = onSetTowerTargetingMode,
+            )
+            AbilityBar(
+                state = state,
+                onActivateAbility = onActivateAbility,
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -405,10 +420,59 @@ private fun TowerTypeSelector(
 }
 
 @Composable
+private fun AbilityBar(
+    state: GameState,
+    onActivateAbility: (AbilityType) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AbilityType.entries.forEach { ability ->
+            val cooldown = state.abilities.cooldownFor(ability)
+            val needsEnemy = ability != AbilityType.EmergencyGold
+            val enabled = state.status == GameStatus.Running &&
+                state.abilities.canUse(ability) &&
+                (!needsEnemy || state.enemies.isNotEmpty())
+            FilledTonalButton(
+                onClick = { onActivateAbility(ability) },
+                enabled = enabled,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = ability.color.copy(alpha = if (enabled) 0.82f else 0.32f),
+                    contentColor = Color.White,
+                ),
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = ability.shortLabel,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Text(
+                        text = when {
+                            ability == AbilityType.EmergencyGold -> "${state.abilities.emergencyGoldUsesRemaining} uses"
+                            cooldown > 0f -> "${cooldown.toInt() + 1}s"
+                            else -> "Ready"
+                        },
+                        fontSize = 10.sp,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun SelectedTowerPanel(
     state: GameState,
     onUpgradeTower: (Int) -> Unit,
     onSellTower: (Int) -> Unit,
+    onSetTowerTargetingMode: (Int, TargetingMode) -> Unit,
 ) {
     val tower = state.selectedTowerId?.let { towerId ->
         state.towers.firstOrNull { it.id == towerId }
@@ -453,6 +517,38 @@ private fun SelectedTowerPanel(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Targeting ${tower.targetingMode.title}",
+                color = Color(0xFFF6C55D),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                TargetingMode.entries.forEach { mode ->
+                    val selected = tower.targetingMode == mode
+                    OutlinedButton(
+                        onClick = { onSetTowerTargetingMode(tower.id, mode) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (selected) tower.type.primaryColor.copy(alpha = 0.7f) else Color.Transparent,
+                            contentColor = if (selected) Color.White else Color(0xFFC7EDE3),
+                        ),
+                        contentPadding = ButtonDefaults.ContentPadding,
+                    ) {
+                        Text(
+                            text = mode.title.take(3),
+                            fontSize = 10.sp,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

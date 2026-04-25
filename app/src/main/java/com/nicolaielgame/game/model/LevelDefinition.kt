@@ -21,6 +21,8 @@ object LevelCatalog {
         levelOne(),
         levelTwo(),
         levelThree(),
+        levelFour(),
+        levelFive(),
     )
 
     val firstLevel: LevelDefinition = levels.first()
@@ -94,7 +96,7 @@ object LevelCatalog {
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 10), WaveEnemyGroup(EnemyType.Normal, 6)), spawnInterval = 0.66f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Tank, 3), WaveEnemyGroup(EnemyType.Normal, 10)), spawnInterval = 0.72f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 12), WaveEnemyGroup(EnemyType.Tank, 3)), spawnInterval = 0.58f),
-                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 10), WaveEnemyGroup(EnemyType.Fast, 8), WaveEnemyGroup(EnemyType.Tank, 5)), spawnInterval = 0.56f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 10), WaveEnemyGroup(EnemyType.Fast, 8), WaveEnemyGroup(EnemyType.Tank, 5), WaveEnemyGroup(EnemyType.Boss, 1)), spawnInterval = 0.56f),
             ),
         )
     }
@@ -135,7 +137,88 @@ object LevelCatalog {
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Tank, 4), WaveEnemyGroup(EnemyType.Fast, 8)), spawnInterval = 0.66f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 12), WaveEnemyGroup(EnemyType.Tank, 5)), spawnInterval = 0.58f),
                 WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 14), WaveEnemyGroup(EnemyType.Tank, 5)), spawnInterval = 0.5f),
-                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 12), WaveEnemyGroup(EnemyType.Fast, 10), WaveEnemyGroup(EnemyType.Tank, 5), WaveEnemyGroup(EnemyType.Boss, 1)), spawnInterval = 0.5f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 12), WaveEnemyGroup(EnemyType.Fast, 10), WaveEnemyGroup(EnemyType.Tank, 5), WaveEnemyGroup(EnemyType.Juggernaut, 1)), spawnInterval = 0.5f),
+            ),
+        )
+    }
+
+    private fun levelFour(): LevelDefinition {
+        val spawn = GridCell(0, 5)
+        val base = GridCell(11, 6)
+        val scenicPath = listOf(
+            GridCell(0, 5), GridCell(1, 5), GridCell(2, 5), GridCell(2, 4),
+            GridCell(3, 4), GridCell(4, 4), GridCell(4, 5), GridCell(4, 6),
+            GridCell(5, 6), GridCell(6, 6), GridCell(6, 5), GridCell(6, 4),
+            GridCell(7, 4), GridCell(8, 4), GridCell(8, 5), GridCell(8, 6),
+            GridCell(9, 6), GridCell(10, 6), GridCell(11, 6),
+        ).toSet()
+        val locked = setOf(
+            spawn, base, GridCell(1, 5), GridCell(10, 6),
+            GridCell(3, 1), GridCell(3, 10), GridCell(7, 1), GridCell(7, 10),
+        )
+
+        return LevelDefinition(
+            id = 4,
+            title = "Crosswinds",
+            description = "Multiple reroute options reward careful targeting and abilities.",
+            map = GameMap(
+                rows = 12,
+                cols = 12,
+                spawn = spawn,
+                base = base,
+                buildLockedCells = locked,
+                scenicPath = scenicPath,
+            ),
+            startingGold = 210,
+            startingLives = 15,
+            waves = listOf(
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 14), WaveEnemyGroup(EnemyType.Normal, 10)), spawnInterval = 0.52f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Tank, 5), WaveEnemyGroup(EnemyType.Fast, 12)), spawnInterval = 0.58f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 18), WaveEnemyGroup(EnemyType.Tank, 5)), spawnInterval = 0.5f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 18), WaveEnemyGroup(EnemyType.Tank, 6), WaveEnemyGroup(EnemyType.Boss, 1)), spawnInterval = 0.46f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 16), WaveEnemyGroup(EnemyType.Fast, 14), WaveEnemyGroup(EnemyType.Tank, 7), WaveEnemyGroup(EnemyType.Regenerator, 1)), spawnInterval = 0.44f),
+            ),
+        )
+    }
+
+    private fun levelFive(): LevelDefinition {
+        val spawn = GridCell(1, 0)
+        val base = GridCell(10, 12)
+        val scenicPath = listOf(
+            GridCell(1, 0), GridCell(1, 1), GridCell(2, 1), GridCell(3, 1),
+            GridCell(3, 2), GridCell(3, 3), GridCell(4, 3), GridCell(5, 3),
+            GridCell(5, 4), GridCell(5, 5), GridCell(4, 5), GridCell(3, 5),
+            GridCell(3, 6), GridCell(4, 6), GridCell(5, 6), GridCell(6, 6),
+            GridCell(7, 6), GridCell(7, 7), GridCell(7, 8), GridCell(8, 8),
+            GridCell(9, 8), GridCell(9, 9), GridCell(9, 10), GridCell(10, 10),
+            GridCell(10, 11), GridCell(10, 12),
+        ).toSet()
+        val locked = setOf(
+            spawn, base, GridCell(1, 1), GridCell(10, 11),
+            GridCell(0, 6), GridCell(1, 6), GridCell(11, 6), GridCell(12, 6),
+            GridCell(6, 2), GridCell(6, 10), GridCell(2, 9), GridCell(9, 2),
+        )
+
+        return LevelDefinition(
+            id = 5,
+            title = "Last Gate",
+            description = "A tight economy and boss mechanics make every tile matter.",
+            map = GameMap(
+                rows = 13,
+                cols = 13,
+                spawn = spawn,
+                base = base,
+                buildLockedCells = locked,
+                scenicPath = scenicPath,
+            ),
+            startingGold = 230,
+            startingLives = 14,
+            waves = listOf(
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 16), WaveEnemyGroup(EnemyType.Normal, 12)), spawnInterval = 0.5f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Tank, 7), WaveEnemyGroup(EnemyType.Fast, 14)), spawnInterval = 0.54f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 20), WaveEnemyGroup(EnemyType.Tank, 7), WaveEnemyGroup(EnemyType.Boss, 1)), spawnInterval = 0.46f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Fast, 22), WaveEnemyGroup(EnemyType.Tank, 8), WaveEnemyGroup(EnemyType.Juggernaut, 1)), spawnInterval = 0.42f),
+                WaveDefinition(groups = listOf(WaveEnemyGroup(EnemyType.Normal, 18), WaveEnemyGroup(EnemyType.Fast, 18), WaveEnemyGroup(EnemyType.Tank, 9), WaveEnemyGroup(EnemyType.Juggernaut, 1), WaveEnemyGroup(EnemyType.Regenerator, 1)), spawnInterval = 0.4f),
             ),
         )
     }

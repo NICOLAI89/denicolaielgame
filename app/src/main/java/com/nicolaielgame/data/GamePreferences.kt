@@ -16,14 +16,31 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
 private val Context.gameDataStore by preferencesDataStore(name = "game_progress")
+private const val MaxPersistedLevels = 5
 
 data class ProgressSnapshot(
     val legacyBestScore: Int,
     val highestUnlockedLevel: Int,
     val bestScoresByLevel: Map<Int, Int>,
+    val activeProfile: Int = 1,
+    val tutorialCompleted: Boolean = false,
 ) {
     fun bestScoreForLevel(levelId: Int): Int {
         return bestScoresByLevel[levelId] ?: 0
+    }
+}
+
+data class ProfileSummary(
+    val slot: Int,
+    val highestUnlockedLevel: Int,
+    val bestScore: Int,
+)
+
+object ProfileRules {
+    const val MaxProfiles = 3
+
+    fun sanitizedSlot(slot: Int): Int {
+        return slot.coerceIn(1, MaxProfiles)
     }
 }
 
@@ -33,15 +50,25 @@ class GamePreferences(context: Context) {
     val progress: Flow<ProgressSnapshot> = dataStore.data
         .safePreferences()
         .map { preferences ->
-            val legacyBest = preferences[Keys.BestScore] ?: 0
-            val levelScores = (1..3).associateWith { levelId ->
-                val perLevel = preferences[Keys.bestScoreForLevel(levelId)] ?: 0
-                if (levelId == 1) maxOf(perLevel, legacyBest) else perLevel
+            val activeProfile = activeProfile(preferences)
+            val legacyBest = if (activeProfile == 1) preferences[Keys.BestScore] ?: 0 else 0
+            val profileBest = preferences[Keys.profileBestScore(activeProfile)] ?: 0
+            val bestScore = maxOf(legacyBest, profileBest)
+            val levelScores = (1..MaxPersistedLevels).associateWith { levelId ->
+                val profileLevel = preferences[Keys.profileBestScoreForLevel(activeProfile, levelId)] ?: 0
+                val legacyLevel = if (activeProfile == 1) preferences[Keys.bestScoreForLevel(levelId)] ?: 0 else 0
+                if (levelId == 1) maxOf(profileLevel, legacyLevel, legacyBest) else maxOf(profileLevel, legacyLevel)
             }
+            val unlocked = preferences[Keys.profileHighestUnlockedLevel(activeProfile)]
+                ?: if (activeProfile == 1) preferences[Keys.HighestUnlockedLevel] ?: 1 else 1
+            val tutorialCompleted = preferences[Keys.profileTutorialCompleted(activeProfile)]
+                ?: if (activeProfile == 1) preferences[Keys.TutorialCompleted] ?: false else false
             ProgressSnapshot(
-                legacyBestScore = legacyBest,
-                highestUnlockedLevel = preferences[Keys.HighestUnlockedLevel] ?: 1,
+                legacyBestScore = bestScore,
+                highestUnlockedLevel = unlocked,
                 bestScoresByLevel = levelScores,
+                activeProfile = activeProfile,
+                tutorialCompleted = tutorialCompleted,
             )
         }
 
@@ -50,6 +77,27 @@ class GamePreferences(context: Context) {
     }
 
     val lastUnlockedLevel: Flow<Int> = progress.map { it.highestUnlockedLevel }
+
+    val profileSummaries: Flow<List<ProfileSummary>> = dataStore.data
+        .safePreferences()
+        .map { preferences ->
+            (1..ProfileRules.MaxProfiles).map { slot ->
+                val legacyBest = if (slot == 1) preferences[Keys.BestScore] ?: 0 else 0
+                val profileBest = preferences[Keys.profileBestScore(slot)] ?: 0
+                val bestLevelScore = (1..MaxPersistedLevels).maxOf { levelId ->
+                    val profileLevel = preferences[Keys.profileBestScoreForLevel(slot, levelId)] ?: 0
+                    val legacyLevel = if (slot == 1) preferences[Keys.bestScoreForLevel(levelId)] ?: 0 else 0
+                    maxOf(profileLevel, legacyLevel)
+                }
+                val unlocked = preferences[Keys.profileHighestUnlockedLevel(slot)]
+                    ?: (if (slot == 1) preferences[Keys.HighestUnlockedLevel] ?: 1 else 1)
+                ProfileSummary(
+                    slot = slot,
+                    highestUnlockedLevel = unlocked,
+                    bestScore = maxOf(legacyBest, profileBest, bestLevelScore),
+                )
+            }
+        }
 
     val settings: Flow<GameSettings> = dataStore.data
         .safePreferences()
@@ -67,30 +115,48 @@ class GamePreferences(context: Context) {
     val achievements: Flow<Set<Achievement>> = dataStore.data
         .safePreferences()
         .map { preferences ->
-            preferences[Keys.UnlockedAchievements].orEmpty().mapNotNull { name ->
+            val activeProfile = activeProfile(preferences)
+            val names = preferences[Keys.profileUnlockedAchievements(activeProfile)]
+                ?: (if (activeProfile == 1) preferences[Keys.UnlockedAchievements].orEmpty() else emptySet())
+            names.mapNotNull { name ->
                 runCatching { Achievement.valueOf(name) }.getOrNull()
             }.toSet()
         }
 
     suspend fun saveBestScore(score: Int) {
         dataStore.edit { preferences ->
-            val current = preferences[Keys.BestScore] ?: 0
+            val activeProfile = activeProfile(preferences)
+            val key = Keys.profileBestScore(activeProfile)
+            val current = preferences[key] ?: 0
             if (score > current) {
-                preferences[Keys.BestScore] = score
+                preferences[key] = score
+            }
+            if (activeProfile == 1) {
+                val legacyCurrent = preferences[Keys.BestScore] ?: 0
+                if (score > legacyCurrent) preferences[Keys.BestScore] = score
             }
         }
     }
 
     suspend fun saveBestScoreForLevel(levelId: Int, score: Int) {
         dataStore.edit { preferences ->
-            val key = Keys.bestScoreForLevel(levelId)
+            val activeProfile = activeProfile(preferences)
+            val key = Keys.profileBestScoreForLevel(activeProfile, levelId)
             val current = preferences[key] ?: 0
             if (score > current) {
                 preferences[key] = score
             }
-            val legacyBest = preferences[Keys.BestScore] ?: 0
-            if (score > legacyBest) {
-                preferences[Keys.BestScore] = score
+            val profileBestKey = Keys.profileBestScore(activeProfile)
+            val profileBest = preferences[profileBestKey] ?: 0
+            if (score > profileBest) {
+                preferences[profileBestKey] = score
+            }
+            if (activeProfile == 1) {
+                val legacyLevelKey = Keys.bestScoreForLevel(levelId)
+                val legacyLevel = preferences[legacyLevelKey] ?: 0
+                if (score > legacyLevel) preferences[legacyLevelKey] = score
+                val legacyBest = preferences[Keys.BestScore] ?: 0
+                if (score > legacyBest) preferences[Keys.BestScore] = score
             }
         }
     }
@@ -101,9 +167,12 @@ class GamePreferences(context: Context) {
 
     suspend fun unlockLevel(level: Int) {
         dataStore.edit { preferences ->
-            val current = preferences[Keys.HighestUnlockedLevel] ?: 1
+            val activeProfile = activeProfile(preferences)
+            val key = Keys.profileHighestUnlockedLevel(activeProfile)
+            val current = preferences[key] ?: (if (activeProfile == 1) preferences[Keys.HighestUnlockedLevel] ?: 1 else 1)
             if (level > current) {
-                preferences[Keys.HighestUnlockedLevel] = level
+                preferences[key] = level
+                if (activeProfile == 1) preferences[Keys.HighestUnlockedLevel] = level
             }
         }
     }
@@ -126,20 +195,64 @@ class GamePreferences(context: Context) {
     suspend fun unlockAchievements(newAchievements: Set<Achievement>) {
         if (newAchievements.isEmpty()) return
         dataStore.edit { preferences ->
-            val current = preferences[Keys.UnlockedAchievements].orEmpty()
-            preferences[Keys.UnlockedAchievements] = current + newAchievements.map { it.name }
+            val activeProfile = activeProfile(preferences)
+            val key = Keys.profileUnlockedAchievements(activeProfile)
+            val current = preferences[key]
+                ?: (if (activeProfile == 1) preferences[Keys.UnlockedAchievements].orEmpty() else emptySet())
+            val next = current + newAchievements.map { it.name }
+            preferences[key] = next
+            if (activeProfile == 1) preferences[Keys.UnlockedAchievements] = next
         }
     }
 
     suspend fun resetProgress() {
         dataStore.edit { preferences ->
+            val activeProfile = activeProfile(preferences)
+            resetProfileKeys(preferences, activeProfile)
+        }
+    }
+
+    suspend fun selectProfile(slot: Int) {
+        dataStore.edit { preferences ->
+            preferences[Keys.ActiveProfile] = ProfileRules.sanitizedSlot(slot)
+        }
+    }
+
+    suspend fun resetProfile(slot: Int) {
+        dataStore.edit { preferences ->
+            resetProfileKeys(preferences, ProfileRules.sanitizedSlot(slot))
+        }
+    }
+
+    suspend fun saveTutorialCompleted(completed: Boolean = true) {
+        dataStore.edit { preferences ->
+            val activeProfile = activeProfile(preferences)
+            preferences[Keys.profileTutorialCompleted(activeProfile)] = completed
+            if (activeProfile == 1) preferences[Keys.TutorialCompleted] = completed
+        }
+    }
+
+    private fun resetProfileKeys(preferences: androidx.datastore.preferences.core.MutablePreferences, profile: Int) {
+        preferences.remove(Keys.profileBestScore(profile))
+        preferences.remove(Keys.profileHighestUnlockedLevel(profile))
+        preferences.remove(Keys.profileUnlockedAchievements(profile))
+        preferences.remove(Keys.profileTutorialCompleted(profile))
+        (1..MaxPersistedLevels).forEach { levelId ->
+            preferences.remove(Keys.profileBestScoreForLevel(profile, levelId))
+        }
+        if (profile == 1) {
             preferences.remove(Keys.BestScore)
             preferences.remove(Keys.HighestUnlockedLevel)
             preferences.remove(Keys.UnlockedAchievements)
-            (1..3).forEach { levelId ->
+            preferences.remove(Keys.TutorialCompleted)
+            (1..MaxPersistedLevels).forEach { levelId ->
                 preferences.remove(Keys.bestScoreForLevel(levelId))
             }
         }
+    }
+
+    private fun activeProfile(preferences: Preferences): Int {
+        return ProfileRules.sanitizedSlot(preferences[Keys.ActiveProfile] ?: 1)
     }
 
     private fun Flow<Preferences>.safePreferences(): Flow<Preferences> {
@@ -155,12 +268,19 @@ class GamePreferences(context: Context) {
     private object Keys {
         val BestScore = intPreferencesKey("best_score")
         val HighestUnlockedLevel = intPreferencesKey("last_unlocked_level")
+        val ActiveProfile = intPreferencesKey("active_profile")
         val SoundEnabled = booleanPreferencesKey("sound_enabled")
         val MusicEnabled = booleanPreferencesKey("music_enabled")
         val ShowGrid = booleanPreferencesKey("show_grid")
         val LastDifficulty = stringPreferencesKey("last_difficulty")
         val UnlockedAchievements = stringSetPreferencesKey("unlocked_achievements")
+        val TutorialCompleted = booleanPreferencesKey("tutorial_completed")
 
         fun bestScoreForLevel(levelId: Int) = intPreferencesKey("best_score_level_$levelId")
+        fun profileBestScore(profile: Int) = intPreferencesKey("profile_${profile}_best_score")
+        fun profileHighestUnlockedLevel(profile: Int) = intPreferencesKey("profile_${profile}_highest_unlocked_level")
+        fun profileUnlockedAchievements(profile: Int) = stringSetPreferencesKey("profile_${profile}_unlocked_achievements")
+        fun profileTutorialCompleted(profile: Int) = booleanPreferencesKey("profile_${profile}_tutorial_completed")
+        fun profileBestScoreForLevel(profile: Int, levelId: Int) = intPreferencesKey("profile_${profile}_best_score_level_$levelId")
     }
 }

@@ -87,7 +87,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
             ) {
-                Text("Reset Progress")
+                Text("Reset Active Profile")
             }
             Spacer(modifier = Modifier.weight(1f))
             OutlinedButton(
@@ -122,8 +122,8 @@ fun SettingsScreen(
                     Text("Cancel")
                 }
             },
-            title = { Text("Reset progress?") },
-            text = { Text("Scores, unlocked levels, and achievements will be reset.") },
+            title = { Text("Reset active profile?") },
+            text = { Text("Scores, unlocked levels, achievements, and tutorial state for this profile will be reset.") },
         )
     }
 }

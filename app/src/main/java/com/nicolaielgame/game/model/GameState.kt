@@ -33,6 +33,8 @@ data class GameState(
     val enemies: List<Enemy> = emptyList(),
     val projectiles: List<Projectile> = emptyList(),
     val hitEffects: List<HitEffect> = emptyList(),
+    val abilityEffects: List<AbilityEffect> = emptyList(),
+    val abilities: AbilityState = AbilityState(),
     val pathPreview: List<GridCell> = emptyList(),
     val selectedCell: GridCell? = null,
     val selectedTowerType: TowerType = TowerType.Basic,

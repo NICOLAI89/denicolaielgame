@@ -31,7 +31,7 @@ class PathFinder(private val map: GameMap) {
         open.add(SearchNode(cell = start, gScore = 0f, fScore = heuristic(start, goal)))
 
         while (open.isNotEmpty()) {
-            val current = open.poll().cell
+            val current = open.poll()?.cell ?: continue
             if (current == goal) {
                 return reconstructPath(cameFrom, current)
             }

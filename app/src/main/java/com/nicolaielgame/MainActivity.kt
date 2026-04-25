@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import com.nicolaielgame.data.AchievementRules
 import com.nicolaielgame.data.GameSettings
 import com.nicolaielgame.data.GamePreferences
+import com.nicolaielgame.data.ProfileSummary
 import com.nicolaielgame.data.ProgressSnapshot
 import com.nicolaielgame.data.ProgressionRules
 import com.nicolaielgame.game.model.DifficultyMode
@@ -27,7 +28,9 @@ import com.nicolaielgame.ui.game.GameScreen
 import com.nicolaielgame.ui.menu.AchievementsScreen
 import com.nicolaielgame.ui.menu.LevelSelectScreen
 import com.nicolaielgame.ui.menu.MainMenuScreen
+import com.nicolaielgame.ui.menu.ProfileSelectScreen
 import com.nicolaielgame.ui.menu.SettingsScreen
+import com.nicolaielgame.ui.menu.TutorialScreen
 import com.nicolaielgame.ui.theme.DenicolaielTheme
 import kotlinx.coroutines.launch
 
@@ -47,6 +50,8 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class RootScreen {
+    ProfileSelect,
+    Tutorial,
     Menu,
     LevelSelect,
     Game,
@@ -65,24 +70,76 @@ private fun DenicolaielApp(preferences: GamePreferences) {
     )
     val settings by preferences.settings.collectAsState(initial = GameSettings())
     val unlockedAchievements by preferences.achievements.collectAsState(initial = emptySet())
+    val profileSummaries by preferences.profileSummaries.collectAsState(
+        initial = (1..3).map { slot -> ProfileSummary(slot, highestUnlockedLevel = 1, bestScore = 0) },
+    )
     val scope = rememberCoroutineScope()
-    var screen by rememberSaveable { mutableStateOf(RootScreen.Menu) }
+    var screen by rememberSaveable { mutableStateOf(RootScreen.ProfileSelect) }
     var selectedLevelId by rememberSaveable { mutableStateOf(LevelCatalog.firstLevel.id) }
     var selectedDifficulty by rememberSaveable { mutableStateOf(settings.lastDifficulty) }
+    var tutorialAcknowledgedProfile by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedLevel = LevelCatalog.find(selectedLevelId)
 
     LaunchedEffect(settings.lastDifficulty) {
         selectedDifficulty = settings.lastDifficulty
     }
 
+    LaunchedEffect(screen, progress.activeProfile, progress.tutorialCompleted) {
+        if (
+            screen == RootScreen.Menu &&
+            !progress.tutorialCompleted &&
+            tutorialAcknowledgedProfile != progress.activeProfile
+        ) {
+            screen = RootScreen.Tutorial
+        }
+    }
+
     when (screen) {
+        RootScreen.ProfileSelect -> ProfileSelectScreen(
+            activeProfile = progress.activeProfile,
+            profileSummaries = profileSummaries,
+            onProfileSelected = { slot ->
+                scope.launch {
+                    preferences.selectProfile(slot)
+                    screen = RootScreen.Menu
+                }
+            },
+            onResetProfile = { slot ->
+                if (slot == progress.activeProfile) {
+                    tutorialAcknowledgedProfile = null
+                }
+                scope.launch { preferences.resetProfile(slot) }
+            },
+            onContinue = { screen = RootScreen.Menu },
+        )
+
+        RootScreen.Tutorial -> TutorialScreen(
+            onComplete = {
+                tutorialAcknowledgedProfile = progress.activeProfile
+                scope.launch {
+                    preferences.saveTutorialCompleted(true)
+                    screen = RootScreen.Menu
+                }
+            },
+            onSkip = {
+                tutorialAcknowledgedProfile = progress.activeProfile
+                scope.launch {
+                    preferences.saveTutorialCompleted(true)
+                    screen = RootScreen.Menu
+                }
+            },
+        )
+
         RootScreen.Menu -> MainMenuScreen(
             bestScore = progress.bestScoresByLevel.values.maxOrNull() ?: progress.legacyBestScore,
             lastUnlockedLevel = progress.highestUnlockedLevel,
             unlockedAchievements = unlockedAchievements.size,
+            activeProfile = progress.activeProfile,
             onStartGame = { screen = RootScreen.LevelSelect },
             onSettings = { screen = RootScreen.Settings },
             onAchievements = { screen = RootScreen.Achievements },
+            onProfiles = { screen = RootScreen.ProfileSelect },
+            onTutorial = { screen = RootScreen.Tutorial },
         )
 
         RootScreen.LevelSelect -> LevelSelectScreen(
@@ -124,6 +181,7 @@ private fun DenicolaielApp(preferences: GamePreferences) {
                 scope.launch { preferences.saveSettings(nextSettings) }
             },
             onResetProgress = {
+                tutorialAcknowledgedProfile = null
                 scope.launch { preferences.resetProgress() }
             },
             onBack = { screen = RootScreen.Menu },

@@ -11,15 +11,15 @@ class ProgressionRulesTest {
             ProgressionRules.highestUnlockedAfterVictory(
                 completedLevelId = 1,
                 currentHighestUnlocked = 1,
-                maxLevelId = 3,
+                maxLevelId = 5,
             ),
         )
         assertEquals(
-            3,
+            5,
             ProgressionRules.highestUnlockedAfterVictory(
                 completedLevelId = 1,
-                currentHighestUnlocked = 3,
-                maxLevelId = 3,
+                currentHighestUnlocked = 5,
+                maxLevelId = 5,
             ),
         )
     }
@@ -27,11 +27,23 @@ class ProgressionRulesTest {
     @Test
     fun highestUnlockedAfterVictory_clampsAtLastLevel() {
         assertEquals(
-            3,
+            5,
             ProgressionRules.highestUnlockedAfterVictory(
-                completedLevelId = 3,
-                currentHighestUnlocked = 3,
-                maxLevelId = 3,
+                completedLevelId = 5,
+                currentHighestUnlocked = 5,
+                maxLevelId = 5,
+            ),
+        )
+    }
+
+    @Test
+    fun highestUnlockedAfterVictory_unlocksThroughLevelFive() {
+        assertEquals(
+            5,
+            ProgressionRules.highestUnlockedAfterVictory(
+                completedLevelId = 4,
+                currentHighestUnlocked = 4,
+                maxLevelId = 5,
             ),
         )
     }

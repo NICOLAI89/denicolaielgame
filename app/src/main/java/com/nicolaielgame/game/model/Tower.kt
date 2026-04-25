@@ -7,6 +7,7 @@ data class Tower(
     val level: Int = 1,
     val totalInvested: Int = type.baseCost,
     val cooldown: Float = 0f,
+    val targetingMode: TargetingMode = TargetingMode.First,
 ) {
     val stats: TowerStats
         get() = type.statsForLevel(level)

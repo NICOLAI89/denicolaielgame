@@ -46,7 +46,7 @@ class GameEnginePlacementTest {
                 buildLockedCells = setOf(GridCell(1, 0), GridCell(1, 2)),
                 scenicPath = setOf(GridCell(1, 0), GridCell(1, 1), GridCell(1, 2)),
             ),
-            startingGold = 10,
+            startingGold = TowerType.Sniper.baseCost - 1,
         )
         val engine = GameEngine(level)
 
@@ -54,7 +54,11 @@ class GameEnginePlacementTest {
         engine.placeTower(GridCell(0, 1))
 
         val state = engine.state.value
-        assertTrueNoTowersOrSpend(stateGold = state.gold, towerCount = state.towers.size, expectedGold = 10)
+        assertTrueNoTowersOrSpend(
+            stateGold = state.gold,
+            towerCount = state.towers.size,
+            expectedGold = TowerType.Sniper.baseCost - 1,
+        )
         assertFalse(state.placementAccepted)
     }
 

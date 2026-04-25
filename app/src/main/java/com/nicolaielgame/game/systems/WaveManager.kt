@@ -28,6 +28,12 @@ data class WaveDefinition(
             "${group.count} ${group.type.title}"
         }
     }
+
+    fun bossPreviewText(): String {
+        return groups
+            .filter { it.type.isBoss }
+            .joinToString(" + ") { it.type.title }
+    }
 }
 
 class WaveManager(private val waves: List<WaveDefinition>) {
@@ -112,7 +118,7 @@ class WaveManager(private val waves: List<WaveDefinition>) {
         val statusText = when (phase) {
             WavePhase.Ready -> if (currentWaveIndex == waves.lastIndex) "Final Wave Ready" else "Wave Ready"
             WavePhase.InProgress -> when {
-                activeWave?.isBossWave == true -> "Boss Wave"
+                activeWave?.isBossWave == true -> "Boss Wave: ${activeWave.bossPreviewText()}"
                 currentWaveIndex == waves.lastIndex -> "Final Wave"
                 else -> "Wave In Progress"
             }

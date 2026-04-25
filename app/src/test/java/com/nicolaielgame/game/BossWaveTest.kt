@@ -10,7 +10,17 @@ class BossWaveTest {
     fun levelThreeContainsBossWaveDefinition() {
         val levelThree = LevelCatalog.find(3)
 
-        assertTrue(levelThree.waves.any { wave -> wave.groups.any { it.type == EnemyType.Boss } })
-        assertTrue(EnemyType.Boss.isBoss)
+        assertTrue(levelThree.waves.any { wave -> wave.groups.any { it.type.isBoss } })
+        assertTrue(levelThree.waves.any { wave -> wave.groups.any { it.type == EnemyType.Juggernaut } })
+        assertTrue(EnemyType.Juggernaut.isBoss)
+    }
+
+    @Test
+    fun laterLevelsIncludeRegeneratorBossMechanics() {
+        val levelFive = LevelCatalog.find(5)
+
+        assertTrue(levelFive.waves.any { wave -> wave.groups.any { it.type == EnemyType.Regenerator } })
+        assertTrue(EnemyType.Regenerator.regenPerSecond > 0f)
+        assertTrue(EnemyType.Juggernaut.slowVulnerability < 1f)
     }
 }

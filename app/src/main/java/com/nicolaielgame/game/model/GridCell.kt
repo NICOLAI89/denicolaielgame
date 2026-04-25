@@ -18,6 +18,12 @@ fun gridDistance(row: Float, col: Float, cell: GridCell): Float {
     return kotlin.math.sqrt(dRow * dRow + dCol * dCol)
 }
 
+fun gridDistance(row: Float, col: Float, targetRow: Float, targetCol: Float): Float {
+    val dRow = row - targetRow
+    val dCol = col - targetCol
+    return kotlin.math.sqrt(dRow * dRow + dCol * dCol)
+}
+
 fun Float.toCellIndex(maxExclusive: Int): Int {
     return roundToInt().coerceIn(0, maxExclusive - 1)
 }
