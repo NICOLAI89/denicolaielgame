@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -15,6 +16,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.nicolaielgame.data.AchievementRules
 import com.nicolaielgame.data.DailyChallengeBest
 import com.nicolaielgame.data.DailyChallengeProgress
@@ -28,6 +30,7 @@ import com.nicolaielgame.game.model.DailyChallengeRules
 import com.nicolaielgame.game.model.DifficultyMode
 import com.nicolaielgame.game.model.GameRunResult
 import com.nicolaielgame.game.model.LevelCatalog
+import com.nicolaielgame.game.systems.AndroidGameSoundPlayer
 import com.nicolaielgame.ui.menu.DailyChallengeScreen
 import com.nicolaielgame.ui.game.GameScreen
 import com.nicolaielgame.ui.menu.AchievementsScreen
@@ -83,6 +86,8 @@ private fun DenicolaielApp(preferences: GamePreferences) {
     val profileSummaries by preferences.profileSummaries.collectAsState(
         initial = (1..3).map { slot -> ProfileSummary(slot, highestUnlockedLevel = 1, bestScore = 0) },
     )
+    val context = LocalContext.current
+    val soundPlayer = remember { AndroidGameSoundPlayer(context) }
     val scope = rememberCoroutineScope()
     var screen by rememberSaveable { mutableStateOf(RootScreen.ProfileSelect) }
     var selectedLevelId by rememberSaveable { mutableStateOf(LevelCatalog.firstLevel.id) }
@@ -94,6 +99,19 @@ private fun DenicolaielApp(preferences: GamePreferences) {
     val activeDailyChallenge = activeDailyDateKey?.let { DailyChallengeRules.generate(it) }
     val selectedLevel = activeDailyChallenge?.level ?: LevelCatalog.find(selectedLevelId)
     val activeDifficulty = activeDailyChallenge?.difficulty ?: selectedDifficulty
+
+    fun withUiClick(action: () -> Unit) {
+        soundPlayer.buttonClick()
+        action()
+    }
+
+    DisposableEffect(soundPlayer) {
+        onDispose { soundPlayer.release() }
+    }
+
+    LaunchedEffect(settings.soundEnabled) {
+        soundPlayer.enabled = settings.soundEnabled
+    }
 
     LaunchedEffect(settings.lastDifficulty) {
         selectedDifficulty = settings.lastDifficulty
@@ -114,22 +132,25 @@ private fun DenicolaielApp(preferences: GamePreferences) {
             activeProfile = progress.activeProfile,
             profileSummaries = profileSummaries,
             onProfileSelected = { slot ->
+                soundPlayer.buttonClick()
                 scope.launch {
                     preferences.selectProfile(slot)
                     screen = RootScreen.Menu
                 }
             },
             onResetProfile = { slot ->
+                soundPlayer.buttonClick()
                 if (slot == progress.activeProfile) {
                     tutorialAcknowledgedProfile = null
                 }
                 scope.launch { preferences.resetProfile(slot) }
             },
-            onContinue = { screen = RootScreen.Menu },
+            onContinue = { withUiClick { screen = RootScreen.Menu } },
         )
 
         RootScreen.Tutorial -> TutorialScreen(
             onComplete = {
+                soundPlayer.buttonClick()
                 tutorialAcknowledgedProfile = progress.activeProfile
                 scope.launch {
                     preferences.saveTutorialCompleted(true)
@@ -137,6 +158,7 @@ private fun DenicolaielApp(preferences: GamePreferences) {
                 }
             },
             onSkip = {
+                soundPlayer.buttonClick()
                 tutorialAcknowledgedProfile = progress.activeProfile
                 scope.launch {
                     preferences.saveTutorialCompleted(true)
@@ -150,13 +172,13 @@ private fun DenicolaielApp(preferences: GamePreferences) {
             lastUnlockedLevel = progress.highestUnlockedLevel,
             unlockedAchievements = unlockedAchievements.size,
             activeProfile = progress.activeProfile,
-            onStartGame = { screen = RootScreen.LevelSelect },
-            onDailyChallenge = { screen = RootScreen.DailyChallenge },
-            onLeaderboard = { screen = RootScreen.Leaderboard },
-            onSettings = { screen = RootScreen.Settings },
-            onAchievements = { screen = RootScreen.Achievements },
-            onProfiles = { screen = RootScreen.ProfileSelect },
-            onTutorial = { screen = RootScreen.Tutorial },
+            onStartGame = { withUiClick { screen = RootScreen.LevelSelect } },
+            onDailyChallenge = { withUiClick { screen = RootScreen.DailyChallenge } },
+            onLeaderboard = { withUiClick { screen = RootScreen.Leaderboard } },
+            onSettings = { withUiClick { screen = RootScreen.Settings } },
+            onAchievements = { withUiClick { screen = RootScreen.Achievements } },
+            onProfiles = { withUiClick { screen = RootScreen.ProfileSelect } },
+            onTutorial = { withUiClick { screen = RootScreen.Tutorial } },
         )
 
         RootScreen.LevelSelect -> LevelSelectScreen(
@@ -164,17 +186,19 @@ private fun DenicolaielApp(preferences: GamePreferences) {
             bestScoresByLevel = progress.bestScoresByLevel,
             selectedDifficulty = selectedDifficulty,
             onDifficultySelected = { difficulty ->
+                soundPlayer.buttonClick()
                 selectedDifficulty = difficulty
                 scope.launch { preferences.saveLastDifficulty(difficulty) }
             },
             onLevelSelected = { level ->
+                soundPlayer.buttonClick()
                 selectedLevelId = level.id
                 activeDailyDateKey = null
                 screen = RootScreen.Game
             },
-            onDailyChallenge = { screen = RootScreen.DailyChallenge },
-            onLeaderboard = { screen = RootScreen.Leaderboard },
-            onBack = { screen = RootScreen.Menu },
+            onDailyChallenge = { withUiClick { screen = RootScreen.DailyChallenge } },
+            onLeaderboard = { withUiClick { screen = RootScreen.Leaderboard } },
+            onBack = { withUiClick { screen = RootScreen.Menu } },
         )
 
         RootScreen.DailyChallenge -> DailyChallengeScreen(
@@ -185,10 +209,11 @@ private fun DenicolaielApp(preferences: GamePreferences) {
                 profileSlot = progress.activeProfile,
             ),
             onStart = {
+                soundPlayer.buttonClick()
                 activeDailyDateKey = todayChallenge.dateKey
                 screen = RootScreen.Game
             },
-            onBack = { screen = RootScreen.Menu },
+            onBack = { withUiClick { screen = RootScreen.Menu } },
         )
 
         RootScreen.Game -> {
@@ -211,13 +236,14 @@ private fun DenicolaielApp(preferences: GamePreferences) {
                 bestScore = activeDailyDateKey?.let { dateKey ->
                     DailyChallengeProgress.bestFor(dailyBests, dateKey, progress.activeProfile)?.score ?: 0
                 } ?: progress.bestScoreForLevel(selectedLevel.id),
-                soundEnabled = settings.soundEnabled,
                 showGrid = settings.showGrid,
                 screenShakeEnabled = settings.screenShakeEnabled,
                 damageNumbersEnabled = settings.damageNumbersEnabled,
                 highContrastMode = settings.highContrastMode,
                 fpsCounterEnabled = settings.fpsCounterEnabled,
+                soundPlayer = soundPlayer,
                 onBackToMenu = {
+                    soundPlayer.buttonClick()
                     screen = if (activeDailyDateKey == null) RootScreen.LevelSelect else RootScreen.DailyChallenge
                     activeDailyDateKey = null
                 },
@@ -227,24 +253,26 @@ private fun DenicolaielApp(preferences: GamePreferences) {
 
         RootScreen.Leaderboard -> LeaderboardScreen(
             entries = leaderboardEntries,
-            onBack = { screen = RootScreen.Menu },
+            onBack = { withUiClick { screen = RootScreen.Menu } },
         )
 
         RootScreen.Settings -> SettingsScreen(
             settings = settings,
             onSettingsChanged = { nextSettings ->
+                soundPlayer.buttonClick()
                 scope.launch { preferences.saveSettings(nextSettings) }
             },
             onResetProgress = {
+                soundPlayer.buttonClick()
                 tutorialAcknowledgedProfile = null
                 scope.launch { preferences.resetProgress() }
             },
-            onBack = { screen = RootScreen.Menu },
+            onBack = { withUiClick { screen = RootScreen.Menu } },
         )
 
         RootScreen.Achievements -> AchievementsScreen(
             unlockedAchievements = unlockedAchievements,
-            onBack = { screen = RootScreen.Menu },
+            onBack = { withUiClick { screen = RootScreen.Menu } },
         )
     }
 }

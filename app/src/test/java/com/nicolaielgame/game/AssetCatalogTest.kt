@@ -21,4 +21,18 @@ class AssetCatalogTest {
         assertFalse(GameAssetCatalog.slotsFor(GameAssetCategory.Ui).isEmpty())
         assertFalse(GameAssetCatalog.slotsFor(GameAssetCategory.AudioSfx).isEmpty())
     }
+
+    @Test
+    fun bundledIteration7BAssetsCoverGameplaySlotsExceptOptionalMusic() {
+        val bundledAssetPaths = GameAssetCatalog.allSlots
+            .map { it.expectedPath }
+            .filterNot { it.contains("/audio/music/") }
+            .toSet()
+
+        val missing = GameAssetCatalog.missingFallbacks(bundledAssetPaths)
+
+        assertTrue(missing.all { it.key == "music_loop" })
+        assertTrue(GameAssetCatalog.visualSlots.all { it.expectedPath.endsWith(".webp") })
+        assertTrue(GameAssetCatalog.audioSlots.any { it.key == "base_hit" })
+    }
 }

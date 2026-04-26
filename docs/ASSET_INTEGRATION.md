@@ -1,6 +1,6 @@
 # Asset Integration
 
-Iteration 7 adds a clean asset pipeline and fallback-safe catalog, but keeps the current Canvas/vector/tone fallbacks active until licensed files are dropped into the project. This prevents missing optional assets from breaking builds.
+Iteration 7B adds a curated subset of real Kenney CC0 assets while keeping the current Canvas/vector/tone fallbacks active. Missing optional files must never break builds or gameplay.
 
 ## Legal Policy
 
@@ -8,31 +8,42 @@ Use only assets with clear CC0, public-domain, or commercial-use terms. Do not u
 
 Preferred source: Kenney official assets. Kenney packs listed below are Creative Commons CC0 and can be used commercially without required attribution. Optional credit is recorded in `CREDITS.md`.
 
-## Recommended Packs
+## Bundled Packs
 
 1. Kenney Tower Defense
    - URL: https://kenney.nl/assets/tower-defense
-   - Use for isometric tiles, towers, landscape pieces, projectile/effect references.
-   - Destination: `app/src/main/assets/tiles`, `towers`, `projectiles_effects`.
+   - Used for isometric tiles, tower sprites, crystal/rock enemy stand-ins, and boss/base visuals.
+   - Destination: `app/src/main/assets/tiles`, `towers`, `enemies`, `bosses`.
 
 2. Kenney UI Pack - Sci-Fi
    - URL: https://kenney.nl/assets/ui-pack-sci-fi
-   - Use for menu panels, campaign buttons, settings controls, and HUD accents.
-   - Destination: `app/src/main/assets/ui`.
+   - Used for projectile/campaign/daily/leaderboard crosshair accents.
+   - Destination: `app/src/main/assets/projectiles_effects`, `ui`, plus lightweight UI copies in `app/src/main/res/drawable/kenney_icon_*.webp`.
 
 3. Kenney Interface Sounds
    - URL: https://kenney.nl/assets/interface-sounds
-   - Use for button click, confirmation, denial, menu transitions.
+   - Used for button click, tower placement, tower sell, and wave start.
    - Destination: `app/src/main/assets/audio/sfx`.
 
 4. Kenney Impact Sounds
    - URL: https://kenney.nl/assets/impact-sounds
-   - Use for enemy hit, enemy death, boss death, meteor impact, base hit.
+   - Used for enemy hit, meteor, and base hit.
    - Destination: `app/src/main/assets/audio/sfx`.
 
-5. Kenney Tower Defense Kit
-   - URL: https://kenney.nl/assets/tower-defense-kit
-   - Optional 3D reference/source pack for future authored art. Do not include large source files in the APK unless converted and optimized.
+5. Kenney Digital Audio
+   - URL: https://kenney.nl/assets/digital-audio
+   - Used for tower fire, upgrades, boss warning, victory, and game over.
+   - Destination: `app/src/main/assets/audio/sfx`.
+
+6. Kenney Sci-fi Sounds
+   - URL: https://kenney.nl/assets/sci-fi-sounds
+   - Used for enemy kill, boss death, and freeze pulse.
+   - Destination: `app/src/main/assets/audio/sfx`.
+
+## Not Bundled
+
+- Kenney Tower Defense Kit remains an optional future 3D reference pack. Do not include large source files in the APK unless converted and optimized.
+- No music loop is bundled yet. The music setting remains persisted for future use, and `AudioRouting.shouldPlayMusic` requires a real music asset before playback.
 
 ## Folder Layout
 
@@ -51,27 +62,27 @@ app/src/main/assets/
 
 The pure catalog in `GameAssetCatalog.kt` lists expected slots and fallback behavior. Missing assets should fall back to current Canvas/vector/tone rendering rather than throwing.
 
-## Suggested File Names
+## Bundled File Names
 
 Visual:
 
-- `tiles/tile_grass.png`
-- `tiles/tile_path.png`
-- `tiles/tile_spawn.png`
-- `tiles/tile_base.png`
-- `towers/tower_basic.png`
-- `towers/tower_sniper.png`
-- `towers/tower_frost.png`
-- `enemies/enemy_normal.png`
-- `enemies/enemy_fast.png`
-- `enemies/enemy_tank.png`
-- `enemies/enemy_shielded.png`
-- `enemies/enemy_swarm.png`
-- `bosses/boss_juggernaut.png`
-- `projectiles_effects/effect_projectile.png`
-- `ui/icon_campaign.png`
-- `ui/icon_daily.png`
-- `ui/icon_leaderboard.png`
+- `tiles/tile_grass.webp`
+- `tiles/tile_path.webp`
+- `tiles/tile_spawn.webp`
+- `tiles/tile_base.webp`
+- `towers/tower_basic.webp`
+- `towers/tower_sniper.webp`
+- `towers/tower_frost.webp`
+- `enemies/enemy_normal.webp`
+- `enemies/enemy_fast.webp`
+- `enemies/enemy_tank.webp`
+- `enemies/enemy_shielded.webp`
+- `enemies/enemy_swarm.webp`
+- `bosses/boss_juggernaut.webp`
+- `projectiles_effects/effect_projectile.webp`
+- `ui/icon_campaign.webp`
+- `ui/icon_daily.webp`
+- `ui/icon_leaderboard.webp`
 
 Audio:
 
@@ -88,18 +99,22 @@ Audio:
 - `audio/sfx/freeze_pulse.ogg`
 - `audio/sfx/emergency_gold.ogg`
 - `audio/sfx/wave_start.ogg`
+- `audio/sfx/base_hit.ogg`
 - `audio/sfx/victory.ogg`
 - `audio/sfx/game_over.ogg`
-- `audio/music/music_loop.ogg`
+- Optional future `audio/music/music_loop.ogg`
 
 ## Optimization Notes
 
-- Prefer optimized PNG/WebP for sprites.
-- Prefer OGG for SFX/music.
+- Bundled sprites are converted to lossless WebP and selected one-by-one from official ZIPs.
+- Bundled SFX are OGG files copied one-by-one from official ZIPs.
 - Keep only used files in the APK.
 - Keep large source files, previews, and unused spritesheets out of `app/src/main/assets`.
 - Confirm all added files are listed in `CREDITS.md`.
 
-## Sandbox Note
+## Fallback Behavior
 
-During Iteration 7, official Kenney pages were reachable for license verification, but command-line download failed in this environment with Windows TLS credential errors. The app therefore ships with the existing fallback visuals/audio plus a ready integration structure.
+- `GameVisualAssets.load` reads assets from `app/src/main/assets` and returns `null` for missing files.
+- `IsoRenderer` uses Kenney sprites when present and falls back to project-authored Canvas shapes when absent or when high contrast mode should favor clear generated shapes.
+- `AndroidGameSoundPlayer` attempts `SoundPool` asset playback first and falls back to Android generated tones if the clip is missing, not yet loaded, or unavailable.
+- `GameAssetCatalog` and `AudioRouting` expose pure logic for fallback and route tests.

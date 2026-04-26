@@ -20,4 +20,19 @@ class AudioRoutingTest {
         assertFalse(AudioRouting.shouldPlayMusic(musicEnabled = true, hasMusicAsset = false))
         assertFalse(AudioRouting.shouldPlayMusic(musicEnabled = false, hasMusicAsset = true))
     }
+
+    @Test
+    fun bundledSoundRoutesCoverGameplayEventsAndLeaveDeniedToneAsFallback() {
+        val availablePaths = SoundEvent.entries
+            .mapNotNull(AudioRouting::assetPathFor)
+            .toSet()
+        val routedEvents = AudioRouting.eventsWithBundledAssets(availablePaths)
+
+        assertTrue(SoundEvent.TowerPlaced in routedEvents)
+        assertTrue(SoundEvent.TowerShot in routedEvents)
+        assertTrue(SoundEvent.EnemyHit in routedEvents)
+        assertTrue(SoundEvent.BossDeath in routedEvents)
+        assertTrue(SoundEvent.GameOver in routedEvents)
+        assertFalse(SoundEvent.PlacementDenied in routedEvents)
+    }
 }

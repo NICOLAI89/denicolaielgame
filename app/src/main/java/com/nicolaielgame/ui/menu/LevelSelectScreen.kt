@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
@@ -99,9 +100,12 @@ fun LevelSelectScreen(
                     shape = RoundedCornerShape(8.dp),
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_ui_daily),
+                        painter = painterResource(R.drawable.kenney_icon_daily),
                         contentDescription = null,
-                        modifier = Modifier.padding(end = 6.dp),
+                        tint = Color.Unspecified,
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .size(18.dp),
                     )
                     Text("Daily")
                 }
@@ -111,9 +115,12 @@ fun LevelSelectScreen(
                     shape = RoundedCornerShape(8.dp),
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_ui_leaderboard),
+                        painter = painterResource(R.drawable.kenney_icon_leaderboard),
                         contentDescription = null,
-                        modifier = Modifier.padding(end = 6.dp),
+                        tint = Color.Unspecified,
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .size(18.dp),
                     )
                     Text("Records")
                 }

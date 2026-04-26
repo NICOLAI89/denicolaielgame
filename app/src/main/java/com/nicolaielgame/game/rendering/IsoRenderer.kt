@@ -7,6 +7,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -14,6 +16,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import com.nicolaielgame.game.assets.GameVisualAssets
 import com.nicolaielgame.game.model.AbilityType
 import com.nicolaielgame.game.model.Enemy
 import com.nicolaielgame.game.model.EnemyType
@@ -27,7 +32,10 @@ import kotlin.math.abs
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-class IsoRenderer(private val map: GameMap) {
+class IsoRenderer(
+    private val map: GameMap,
+    private val assets: GameVisualAssets = GameVisualAssets.Empty,
+) {
     private val drawCells = map.cells.sortedWith(compareBy<GridCell> { it.row + it.col }.thenBy { it.row })
 
     fun draw(
@@ -61,7 +69,7 @@ class IsoRenderer(private val map: GameMap) {
                 drawRangePreview(preview.cell, preview.range, preview.color, layout)
             }
             state.towers.sortedBy { it.cell.row + it.cell.col }.forEach { tower ->
-                drawTower(tower, layout)
+                drawTower(tower, layout, highContrast)
             }
             drawAimBeams(state, layout)
             state.enemies.sortedBy { it.row + it.col }.forEach { enemy ->
@@ -160,6 +168,25 @@ class IsoRenderer(private val map: GameMap) {
 
         drawPath(side, ArcanePalette.TileSide.copy(alpha = 0.92f))
         drawPath(tile, baseColor)
+        if (!highContrast) {
+            val tileAsset = when {
+                cell == map.spawn -> assets.tileSpawn ?: assets.tilePath
+                cell == map.base -> assets.tileBase ?: assets.tilePath
+                isPath || isLocked -> assets.tilePath
+                else -> assets.tileGrass
+            }
+            tileAsset?.let { image ->
+                val assetWidth = layout.tileWidth * if (cell == map.base) 0.82f else 1.04f
+                val assetHeight = assetWidth * image.height / image.width
+                drawAnchoredImage(
+                    image = image,
+                    anchor = center + Offset(0f, layout.tileHeight * 0.56f),
+                    width = assetWidth,
+                    height = assetHeight,
+                    alpha = if (isLocked && cell != map.base && cell != map.spawn) 0.52f else 0.92f,
+                )
+            }
+        }
         if (isPath) {
             drawPath(tile, ArcanePalette.CircuitTeal.copy(alpha = if (highContrast) 0.22f else 0.12f))
         }
@@ -258,7 +285,7 @@ class IsoRenderer(private val map: GameMap) {
         )
     }
 
-    private fun DrawScope.drawTower(tower: Tower, layout: IsoLayout) {
+    private fun DrawScope.drawTower(tower: Tower, layout: IsoLayout, highContrast: Boolean) {
         val center = cellCenter(tower.cell, layout)
         val w = layout.tileWidth
         val h = layout.tileHeight
@@ -270,7 +297,24 @@ class IsoRenderer(private val map: GameMap) {
             size = Size(w * 0.5f, h * 0.24f),
         )
 
-        when (tower.type) {
+        val towerAsset = if (highContrast) null else assets.tower(tower.type)
+        if (towerAsset != null) {
+            val assetWidth = w * if (tower.type == TowerType.Sniper) 0.76f else 0.82f
+            val assetHeight = assetWidth * towerAsset.height / towerAsset.width
+            drawAnchoredImage(
+                image = towerAsset,
+                anchor = center + Offset(0f, h * 0.08f),
+                width = assetWidth,
+                height = assetHeight,
+            )
+            drawCircle(
+                color = tower.type.accentColor.copy(alpha = 0.78f),
+                radius = h * 0.18f,
+                center = Offset(center.x, center.y - h * 0.72f),
+                style = Stroke(width = 3f),
+            )
+        } else {
+            when (tower.type) {
             TowerType.Basic -> {
                 drawRoundRect(
                     color = tower.type.primaryColor,
@@ -315,6 +359,7 @@ class IsoRenderer(private val map: GameMap) {
                 )
             }
         }
+        }
         drawCircle(
             color = ArcanePalette.WarningGold,
             radius = h * 0.13f,
@@ -356,7 +401,30 @@ class IsoRenderer(private val map: GameMap) {
             topLeft = Offset(center.x - radius * 1.2f, center.y + radius * 0.45f),
             size = Size(radius * 2.4f, radius * 0.65f),
         )
-        drawEnemyBody(enemy.type, bodyCenter, radius, highContrast)
+        val enemyAsset = if (highContrast) null else assets.enemy(enemy.type)
+        if (enemyAsset != null) {
+            val scale = when {
+                enemy.type.isBoss -> 3.85f
+                enemy.type == EnemyType.Swarm -> 2.65f
+                else -> 3.15f
+            }
+            val assetWidth = radius * scale
+            val assetHeight = assetWidth * enemyAsset.height / enemyAsset.width
+            drawAnchoredImage(
+                image = enemyAsset,
+                anchor = center + Offset(0f, radius * 1.16f),
+                width = assetWidth,
+                height = assetHeight,
+            )
+            drawCircle(
+                color = enemy.type.accentColor.copy(alpha = if (enemy.type.isBoss) 0.72f else 0.48f),
+                radius = radius * if (enemy.type.isBoss) 1.15f else 0.86f,
+                center = bodyCenter,
+                style = Stroke(width = if (enemy.type.isBoss) 4f else 2.4f),
+            )
+        } else {
+            drawEnemyBody(enemy.type, bodyCenter, radius, highContrast)
+        }
         if (enemy.hitFlash > 0f) {
             drawCircle(
                 color = Color.White.copy(alpha = (enemy.hitFlash / 0.18f).coerceIn(0f, 1f) * 0.72f),
@@ -625,6 +693,16 @@ class IsoRenderer(private val map: GameMap) {
             radius = layout.tileHeight * if (projectile.towerType == TowerType.Sniper) 0.08f else 0.12f,
             center = current,
         )
+        assets.projectileEffect?.let { image ->
+            val assetWidth = layout.tileHeight * if (projectile.towerType == TowerType.Sniper) 0.42f else 0.34f
+            drawAnchoredImage(
+                image = image,
+                anchor = current + Offset(0f, assetWidth * 0.5f),
+                width = assetWidth,
+                height = assetWidth * image.height / image.width,
+                alpha = 0.86f,
+            )
+        }
     }
 
     private fun createLayout(canvasSize: Size): IsoLayout {
@@ -665,6 +743,31 @@ class IsoRenderer(private val map: GameMap) {
             lineTo(center.x - width / 2f, center.y)
             close()
         }
+    }
+
+    private fun DrawScope.drawAnchoredImage(
+        image: ImageBitmap,
+        anchor: Offset,
+        width: Float,
+        height: Float,
+        anchorX: Float = 0.5f,
+        anchorY: Float = 1f,
+        alpha: Float = 1f,
+    ) {
+        val dstWidth = width.roundToInt().coerceAtLeast(1)
+        val dstHeight = height.roundToInt().coerceAtLeast(1)
+        drawImage(
+            image = image,
+            srcOffset = IntOffset.Zero,
+            srcSize = IntSize(image.width, image.height),
+            dstOffset = IntOffset(
+                x = (anchor.x - dstWidth * anchorX).roundToInt(),
+                y = (anchor.y - dstHeight * anchorY).roundToInt(),
+            ),
+            dstSize = IntSize(dstWidth, dstHeight),
+            alpha = alpha,
+            filterQuality = FilterQuality.Medium,
+        )
     }
 
     private data class IsoLayout(

@@ -22,7 +22,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -40,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nicolaielgame.game.assets.GameVisualAssets
 import com.nicolaielgame.game.engine.GameEngine
 import com.nicolaielgame.game.model.AbilityType
 import com.nicolaielgame.game.model.DifficultyMode
@@ -52,36 +52,26 @@ import com.nicolaielgame.game.model.TargetingMode
 import com.nicolaielgame.game.model.TowerType
 import com.nicolaielgame.game.model.WavePhase
 import com.nicolaielgame.game.rendering.IsoRenderer
-import com.nicolaielgame.game.systems.AndroidToneSoundPlayer
+import com.nicolaielgame.game.systems.SoundPlayer
 
 @Composable
 fun GameScreen(
     level: LevelDefinition,
     difficulty: DifficultyMode,
     bestScore: Int,
-    soundEnabled: Boolean,
     showGrid: Boolean,
     screenShakeEnabled: Boolean,
     damageNumbersEnabled: Boolean,
     highContrastMode: Boolean,
     fpsCounterEnabled: Boolean,
+    soundPlayer: SoundPlayer,
     onBackToMenu: () -> Unit,
     onRunFinalized: suspend (GameRunResult) -> Unit,
 ) {
-    val context = LocalContext.current
-    val soundPlayer = remember { AndroidToneSoundPlayer(context) }
     val engine = remember(level.id, difficulty) { GameEngine(level, difficulty, soundPlayer) }
     val state by engine.state.collectAsState()
     var savedTerminalStatus by remember { mutableStateOf<GameStatus?>(null) }
     var performanceStats by remember { mutableStateOf(PerformanceStats()) }
-
-    DisposableEffect(Unit) {
-        onDispose { soundPlayer.release() }
-    }
-
-    LaunchedEffect(soundEnabled) {
-        soundPlayer.enabled = soundEnabled
-    }
 
     LaunchedEffect(bestScore) {
         engine.setBestScore(bestScore)
@@ -390,12 +380,14 @@ private fun GameCanvas(
     modifier: Modifier = Modifier,
     onCellTapped: (GridCell) -> Unit,
 ) {
-    val renderer = remember(state.map) { IsoRenderer(state.map) }
+    val context = LocalContext.current
+    val visualAssets = remember(context) { GameVisualAssets.load(context) }
+    val rendererWithAssets = remember(state.map, visualAssets) { IsoRenderer(state.map, visualAssets) }
     Canvas(
         modifier = modifier.pointerInput(state.status) {
             detectTapGestures { tap ->
                 if (state.status == GameStatus.Running) {
-                    renderer.cellForOffset(
+                    rendererWithAssets.cellForOffset(
                         offset = tap,
                         canvasSize = Size(size.width.toFloat(), size.height.toFloat()),
                     )?.let(onCellTapped)
@@ -403,7 +395,7 @@ private fun GameCanvas(
             }
         },
     ) {
-        renderer.draw(
+        rendererWithAssets.draw(
             drawScope = this,
             state = state,
             showGrid = showGrid,

@@ -110,7 +110,7 @@ fun MainMenuScreen(
                     .height(54.dp),
                 shape = RoundedCornerShape(8.dp),
             ) {
-                ButtonLabel(icon = R.drawable.ic_ui_campaign, text = "Start Defense", fontSize = 18)
+                ButtonLabel(icon = R.drawable.kenney_icon_campaign, text = "Start Defense", fontSize = 18)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Button(
@@ -120,7 +120,7 @@ fun MainMenuScreen(
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
             ) {
-                ButtonLabel(icon = R.drawable.ic_ui_daily, text = "Daily Challenge", fontSize = 16)
+                ButtonLabel(icon = R.drawable.kenney_icon_daily, text = "Daily Challenge", fontSize = 16)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(
@@ -134,7 +134,7 @@ fun MainMenuScreen(
                         .height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                 ) {
-                    ButtonLabel(icon = R.drawable.ic_ui_leaderboard, text = "Leaderboard")
+                    ButtonLabel(icon = R.drawable.kenney_icon_leaderboard, text = "Leaderboard")
                 }
                 Button(
                     onClick = onAchievements,
@@ -194,7 +194,10 @@ private fun ButtonLabel(
         Icon(
             painter = painterResource(icon),
             contentDescription = null,
-            modifier = Modifier.padding(end = 8.dp),
+            tint = Color.Unspecified,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(20.dp),
         )
         Text(text = text, fontSize = fontSize.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }

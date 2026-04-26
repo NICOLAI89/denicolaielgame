@@ -75,7 +75,7 @@ fun SettingsScreen(
                     )
                     SettingRow(
                         icon = R.drawable.ic_ui_settings,
-                        label = "Music placeholder",
+                        label = "Music",
                         checked = settings.musicEnabled,
                         onCheckedChange = { onSettingsChanged(settings.copy(musicEnabled = it)) },
                     )
