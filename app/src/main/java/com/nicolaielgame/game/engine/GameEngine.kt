@@ -202,6 +202,9 @@ class GameEngine(
                 waveBannerTimeRemaining = if (snapshot.isBossWave) 2.2f else 1.25f,
             )
             soundPlayer.waveStart()
+            if (snapshot.isBossWave) {
+                soundPlayer.bossWarning()
+            }
         }
     }
 
@@ -268,6 +271,7 @@ class GameEngine(
                 )
                 shakeTime = 0.32f
                 shakeIntensity = 5.2f
+                soundPlayer.meteor()
                 soundPlayer.enemyHit()
             }
 
@@ -314,6 +318,7 @@ class GameEngine(
                     col = center.col,
                     duration = 0.9f,
                 )
+                soundPlayer.freezePulse()
                 soundPlayer.enemyHit()
             }
 
@@ -334,6 +339,7 @@ class GameEngine(
                     col = map.base.col.toFloat(),
                     duration = 0.65f,
                 )
+                soundPlayer.emergencyGold()
                 soundPlayer.towerSold()
             }
         }
@@ -349,6 +355,7 @@ class GameEngine(
                         bossesDefeated++
                         shakeTime = maxOf(shakeTime, 0.38f)
                         shakeIntensity = maxOf(shakeIntensity, 6.4f)
+                        soundPlayer.bossDeath()
                     }
                     hitEffects += HitEffect(
                         id = nextHitEffectId++,
@@ -541,6 +548,7 @@ class GameEngine(
                     bossesDefeated++
                     shakeTime = maxOf(shakeTime, 0.42f)
                     shakeIntensity = maxOf(shakeIntensity, 6.8f)
+                    soundPlayer.bossDeath()
                 }
                 runStats = runStats.withKill(enemy.type)
                 deathEffects += HitEffect(

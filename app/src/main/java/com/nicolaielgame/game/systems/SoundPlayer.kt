@@ -5,6 +5,7 @@ import android.media.AudioManager
 import android.media.ToneGenerator
 
 interface SoundPlayer {
+    fun buttonClick()
     fun towerPlaced()
     fun towerUpgraded()
     fun towerSold()
@@ -12,6 +13,11 @@ interface SoundPlayer {
     fun towerShot()
     fun enemyHit()
     fun enemyDown()
+    fun bossWarning()
+    fun bossDeath()
+    fun meteor()
+    fun freezePulse()
+    fun emergencyGold()
     fun waveStart()
     fun baseHit()
     fun victory()
@@ -32,6 +38,10 @@ class AndroidToneSoundPlayer(context: Context) : SoundPlayer {
 
     override fun towerPlaced() {
         play(ToneGenerator.TONE_PROP_ACK, 70)
+    }
+
+    override fun buttonClick() {
+        play(ToneGenerator.TONE_PROP_BEEP, 45)
     }
 
     override fun towerUpgraded() {
@@ -58,6 +68,26 @@ class AndroidToneSoundPlayer(context: Context) : SoundPlayer {
         play(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 55)
     }
 
+    override fun bossWarning() {
+        play(ToneGenerator.TONE_CDMA_ABBR_ALERT, 140)
+    }
+
+    override fun bossDeath() {
+        play(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 180)
+    }
+
+    override fun meteor() {
+        play(ToneGenerator.TONE_CDMA_ABBR_ALERT, 100)
+    }
+
+    override fun freezePulse() {
+        play(ToneGenerator.TONE_CDMA_PIP, 90)
+    }
+
+    override fun emergencyGold() {
+        play(ToneGenerator.TONE_CDMA_CONFIRM, 100)
+    }
+
     override fun waveStart() {
         play(ToneGenerator.TONE_CDMA_ONE_MIN_BEEP, 120)
     }
@@ -79,13 +109,13 @@ class AndroidToneSoundPlayer(context: Context) : SoundPlayer {
     }
 
     private fun play(tone: Int, durationMs: Int) {
-        // TODO: Replace these generated tones with polished game SFX assets.
         if (!enabled) return
         runCatching { toneGenerator?.startTone(tone, durationMs) }
     }
 }
 
 object SilentSoundPlayer : SoundPlayer {
+    override fun buttonClick() = Unit
     override fun towerPlaced() = Unit
     override fun towerUpgraded() = Unit
     override fun towerSold() = Unit
@@ -93,6 +123,11 @@ object SilentSoundPlayer : SoundPlayer {
     override fun towerShot() = Unit
     override fun enemyHit() = Unit
     override fun enemyDown() = Unit
+    override fun bossWarning() = Unit
+    override fun bossDeath() = Unit
+    override fun meteor() = Unit
+    override fun freezePulse() = Unit
+    override fun emergencyGold() = Unit
     override fun waveStart() = Unit
     override fun baseHit() = Unit
     override fun victory() = Unit

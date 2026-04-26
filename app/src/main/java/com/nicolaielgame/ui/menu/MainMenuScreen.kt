@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,10 +29,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nicolaielgame.R
 
 @Composable
 fun MainMenuScreen(
@@ -107,7 +110,7 @@ fun MainMenuScreen(
                     .height(54.dp),
                 shape = RoundedCornerShape(8.dp),
             ) {
-                Text(text = "Start Defense", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                ButtonLabel(icon = R.drawable.ic_ui_campaign, text = "Start Defense", fontSize = 18)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Button(
@@ -117,7 +120,7 @@ fun MainMenuScreen(
                     .height(50.dp),
                 shape = RoundedCornerShape(8.dp),
             ) {
-                Text(text = "Daily Challenge", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                ButtonLabel(icon = R.drawable.ic_ui_daily, text = "Daily Challenge", fontSize = 16)
             }
             Spacer(modifier = Modifier.height(10.dp))
             Row(
@@ -131,7 +134,7 @@ fun MainMenuScreen(
                         .height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                 ) {
-                    Text("Leaderboard")
+                    ButtonLabel(icon = R.drawable.ic_ui_leaderboard, text = "Leaderboard")
                 }
                 Button(
                     onClick = onAchievements,
@@ -140,7 +143,7 @@ fun MainMenuScreen(
                         .height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                 ) {
-                    Text("Achievements")
+                    ButtonLabel(icon = R.drawable.ic_ui_achievement, text = "Achievements")
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
@@ -155,7 +158,7 @@ fun MainMenuScreen(
                         .height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                 ) {
-                    Text("Profiles")
+                    ButtonLabel(icon = R.drawable.ic_ui_profile, text = "Profiles")
                 }
                 Button(
                     onClick = onSettings,
@@ -164,7 +167,7 @@ fun MainMenuScreen(
                         .height(48.dp),
                     shape = RoundedCornerShape(8.dp),
                 ) {
-                    Text("Settings")
+                    ButtonLabel(icon = R.drawable.ic_ui_settings, text = "Settings")
                 }
             }
             Spacer(modifier = Modifier.height(10.dp))
@@ -175,9 +178,25 @@ fun MainMenuScreen(
                     .height(46.dp),
                 shape = RoundedCornerShape(8.dp),
             ) {
-                Text("Tutorial")
+                ButtonLabel(icon = R.drawable.ic_ui_tutorial, text = "Tutorial")
             }
         }
+    }
+}
+
+@Composable
+private fun ButtonLabel(
+    icon: Int,
+    text: String,
+    fontSize: Int = 14,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            modifier = Modifier.padding(end = 8.dp),
+        )
+        Text(text = text, fontSize = fontSize.sp, fontWeight = FontWeight.Bold, maxLines = 1)
     }
 }
 

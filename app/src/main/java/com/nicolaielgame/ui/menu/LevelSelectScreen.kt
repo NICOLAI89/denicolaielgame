@@ -1,5 +1,6 @@
 package com.nicolaielgame.ui.menu
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -22,11 +24,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nicolaielgame.R
+import com.nicolaielgame.data.CampaignNode
+import com.nicolaielgame.data.CampaignNodeState
+import com.nicolaielgame.data.CampaignProgression
 import com.nicolaielgame.game.model.DifficultyMode
 import com.nicolaielgame.game.model.LevelCatalog
 import com.nicolaielgame.game.model.LevelDefinition
@@ -38,8 +47,16 @@ fun LevelSelectScreen(
     selectedDifficulty: DifficultyMode,
     onDifficultySelected: (DifficultyMode) -> Unit,
     onLevelSelected: (LevelDefinition) -> Unit,
+    onDailyChallenge: () -> Unit,
+    onLeaderboard: () -> Unit,
     onBack: () -> Unit,
 ) {
+    val campaignNodes = CampaignProgression.nodes(
+        levels = LevelCatalog.levels,
+        highestUnlockedLevel = highestUnlockedLevel,
+        bestScoresByLevel = bestScoresByLevel,
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -53,18 +70,55 @@ fun LevelSelectScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = "Select Level",
+                text = "Campaign Map",
                 color = Color.White,
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Black,
             )
             Text(
-                text = "Victory unlocks the next battlefield.",
+                text = "Follow the circuit route, then branch into daily runs or records.",
                 color = Color(0xFFC7EDE3),
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 6.dp, bottom = 20.dp),
             )
+            CampaignMap(
+                nodes = campaignNodes,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp),
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                FilledTonalButton(
+                    onClick = onDailyChallenge,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_ui_daily),
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 6.dp),
+                    )
+                    Text("Daily")
+                }
+                FilledTonalButton(
+                    onClick = onLeaderboard,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_ui_leaderboard),
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 6.dp),
+                    )
+                    Text("Records")
+                }
+            }
+            Spacer(modifier = Modifier.height(14.dp))
             DifficultySelector(
                 selectedDifficulty = selectedDifficulty,
                 onDifficultySelected = onDifficultySelected,
@@ -89,6 +143,78 @@ fun LevelSelectScreen(
                 shape = RoundedCornerShape(8.dp),
             ) {
                 Text("Back to Menu")
+            }
+        }
+    }
+}
+
+@Composable
+private fun CampaignMap(
+    nodes: List<CampaignNode>,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xDD102522),
+        tonalElevation = 4.dp,
+        modifier = modifier,
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+        ) {
+            if (nodes.isEmpty()) return@Canvas
+            val points = nodes.mapIndexed { index, _ ->
+                val progress = if (nodes.size == 1) 0f else index / (nodes.size - 1f)
+                val x = size.width * (0.09f + progress * 0.82f)
+                val y = size.height * when (index % 4) {
+                    0 -> 0.66f
+                    1 -> 0.34f
+                    2 -> 0.48f
+                    else -> 0.24f
+                }
+                Offset(x, y)
+            }
+
+            points.zipWithNext().forEach { (start, end) ->
+                drawLine(
+                    color = Color(0xFF18E0B5).copy(alpha = 0.38f),
+                    start = start,
+                    end = end,
+                    strokeWidth = 5f,
+                )
+                drawLine(
+                    color = Color.White.copy(alpha = 0.2f),
+                    start = start,
+                    end = end,
+                    strokeWidth = 1.5f,
+                )
+            }
+
+            nodes.forEachIndexed { index, node ->
+                val center = points[index]
+                val color = when (node.state) {
+                    CampaignNodeState.Completed -> Color(0xFF18E0B5)
+                    CampaignNodeState.Unlocked -> Color(0xFFFFD166)
+                    CampaignNodeState.Locked -> Color(0xFF465B59)
+                }
+                drawCircle(
+                    color = color.copy(alpha = 0.25f),
+                    radius = 28f,
+                    center = center,
+                )
+                drawCircle(
+                    color = color,
+                    radius = 16f,
+                    center = center,
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = if (node.state == CampaignNodeState.Locked) 0.22f else 0.72f),
+                    radius = 19f,
+                    center = center,
+                    style = Stroke(width = 3f),
+                )
             }
         }
     }

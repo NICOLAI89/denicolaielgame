@@ -218,6 +218,7 @@ private fun GameScaffold(
                 title = "Base Lost",
                 subtitle = "Score ${state.score}  Gold ${state.gold}  Wave ${state.wave.currentWave}/${state.wave.totalWaves}",
                 summaryLines = runSummaryLines(state),
+                titleColor = Color(0xFFFF7A90),
                 primaryText = "Restart",
                 onPrimary = onRestart,
                 onBackToMenu = onBackToMenu,
@@ -227,6 +228,7 @@ private fun GameScaffold(
                 title = "Victory",
                 subtitle = "Score ${state.score}  Lives ${state.lives}  Bosses ${state.bossesDefeated}",
                 summaryLines = runSummaryLines(state),
+                titleColor = Color(0xFF78F5C8),
                 primaryText = "Play Again",
                 onPrimary = onRestart,
                 onBackToMenu = onBackToMenu,
@@ -756,6 +758,7 @@ private fun TerminalOverlay(
     title: String,
     subtitle: String,
     summaryLines: List<String>,
+    titleColor: Color,
     primaryText: String,
     onPrimary: () -> Unit,
     onBackToMenu: () -> Unit,
@@ -765,7 +768,7 @@ private fun TerminalOverlay(
             text = title,
             fontSize = 30.sp,
             fontWeight = FontWeight.Black,
-            color = Color.White,
+            color = titleColor,
             textAlign = TextAlign.Center,
         )
         Text(

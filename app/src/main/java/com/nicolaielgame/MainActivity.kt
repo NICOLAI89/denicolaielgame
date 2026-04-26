@@ -172,6 +172,8 @@ private fun DenicolaielApp(preferences: GamePreferences) {
                 activeDailyDateKey = null
                 screen = RootScreen.Game
             },
+            onDailyChallenge = { screen = RootScreen.DailyChallenge },
+            onLeaderboard = { screen = RootScreen.Leaderboard },
             onBack = { screen = RootScreen.Menu },
         )
 

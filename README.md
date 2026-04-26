@@ -2,36 +2,37 @@
 
 Arcane Circuit Defense is a native Android 2.5D isometric tower defense prototype built with Kotlin, Gradle, Jetpack Compose, and Compose Canvas. Enemies spawn in deterministic waves and dynamically reroute with A* pathfinding when the player places, upgrades, or sells towers.
 
-## Current Iteration 6 Features
+## Current Iteration 7 Features
 
 - Native Android Kotlin app with Jetpack Compose screens and centralized Compose Canvas rendering.
-- Profile select, tutorial, main menu, level select, daily challenge, local leaderboard, settings, achievements, pause, victory, and game over flows.
+- Profile select, tutorial, main menu, campaign map, daily challenge, local leaderboard, settings, achievements, pause, victory, and game over flows.
 - Seven handcrafted campaign levels with progression unlocks through Level 7.
+- Visual campaign map with nodes for Levels 1-7, locked/unlocked/completed states, route lines, daily challenge shortcut, and leaderboard shortcut.
 - Daily challenge mode with a deterministic local date seed, fixed daily difficulty, fixed daily modifiers, generated daily waves, and local best daily score saving.
 - Local leaderboard for completed campaign runs, including profile slot, level, difficulty, score, completion time, lives remaining, and completion date/time.
 - Dynamic A* rerouting with tower placement validation and wave lifecycle states: `Ready`, `In Progress`, `Cleared`, and `Finished`.
 - Three tower types: Basic, Sniper, and Frost, retuned for the longer campaign.
 - Tower upgrades, sell/refund controls, tower range preview, selected tower stats, current targeting mode indicator, targeting mode buttons, and firing aim beams.
-- Tower targeting modes: First, Last, Strongest, Weakest, and Closest.
-- Active abilities: Meteor Strike, Freeze Pulse, and Emergency Gold, each with cooldown state and clearer cooldown labels.
 - Enemy types: Normal, Fast, Tank, Shielded, Swarm, Boss, Juggernaut, and Regenerator.
-- Shielded enemies reduce incoming damage; Swarm enemies are low-health, fast, high-count pressure units.
-- Boss waves with named UI, slow-resistant Juggernauts, and regenerating Regenerators.
-- Difficulty modes: Easy, Normal, and Hard. Difficulty affects enemy health, speed, rewards, starting gold/lives, and score.
 - Accessibility and feedback toggles persisted with DataStore: sound, music placeholder, grid visibility, screen shake, damage numbers, high contrast mode, FPS counter, and last difficulty.
 - Lightweight performance HUD toggle showing FPS, average frame time, and average update time.
-- Local run summary tracking for waves completed, towers built/upgraded/sold, abilities used, enemies killed, bosses killed, and run time.
-- DataStore persistence for up to three local profiles, per-profile best scores, highest unlocked level, achievements, tutorial completion, leaderboard entries, daily bests, and settings.
-- Local achievements: First Victory, No Lives Lost, Tower Specialist, Boss Slayer, and Hard Mode Clear.
-- App label confirmed as "Arcane Circuit Defense"; debug builds use versionCode `1` and versionName `0.1.0`.
-- Intentional dark splash/theme colors and vector launcher icon.
+- Asset pipeline folders for tiles, towers, enemies, bosses, projectiles/effects, UI, SFX, and music.
+- Fallback-safe asset catalog so missing optional assets keep using Canvas/vector/tone fallbacks.
+- Release-oriented vector launcher icon, splash polish, and version `0.2.0` / versionCode `2`.
+- CREDITS and asset-integration documentation with CC0 Kenney pack recommendations.
 
-## Iteration 6 Highlights
+## Asset And Audio Integration
 
-- The prototype now has repeatable reasons to return: local leaderboard runs and a deterministic daily challenge.
-- Level 6 introduces Shielded and Swarm enemies; Level 7 combines bosses, shields, swarms, abilities, and tighter targeting pressure.
-- Selected tower targeting is easier to read, and firing beams make target choice visible during combat.
-- High contrast visuals, damage number toggle, screen shake toggle, readable cooldown text, and the optional FPS HUD make playtesting more practical.
+Iteration 7 prepares the project for real licensed assets while keeping the build safe if optional files are missing.
+
+- Bundled visuals remain project-authored Canvas/vector fallbacks.
+- Bundled UI icons are project-authored vector drawables.
+- Bundled audio remains Android generated-tone fallback.
+- Recommended external packs are Kenney CC0 packs: Tower Defense, UI Pack - Sci-Fi, Interface Sounds, Impact Sounds, and Tower Defense Kit.
+- Manual integration instructions live in `docs/ASSET_INTEGRATION.md`.
+- Credits and license notes live in `CREDITS.md`.
+
+The sandbox could verify Kenney CC0 pages but could not download files automatically because command-line TLS failed. No unclear-license assets were added.
 
 ## Build From Command Line
 
@@ -51,6 +52,39 @@ On macOS or Linux:
 
 The debug APK is produced at `app/build/outputs/apk/debug/app-debug.apk` after a successful command-line build.
 
+## Release Build Notes
+
+Debug validation:
+
+```powershell
+.\gradlew.bat testDebugUnitTest
+.\gradlew.bat assembleDebug
+git diff --check
+```
+
+Release APK/AAB generation can be added once signing config is decided. Do not commit signing keys or local keystores. Keep `local.properties` local.
+
+## Play Store Internal Testing Prep
+
+- App label: "Arcane Circuit Defense".
+- Package id: `com.nicolaielgame`.
+- Version: `versionCode = 2`, `versionName = "0.2.0"`.
+- Prepare release signing outside the repository.
+- Run debug unit tests and assemble before creating an internal testing artifact.
+- Perform real-device smoke tests for campaign map, daily challenge, leaderboard, settings persistence, sound/music toggles, profile reset, and pause/victory/game-over flows.
+- Publishing automation is intentionally not configured yet.
+
+## Privacy Note
+
+Arcane Circuit Defense is local-only in Iteration 7.
+
+- No backend.
+- No account or login.
+- No ads.
+- No in-app purchases.
+- No cloud leaderboard.
+- Progress, settings, profiles, achievements, local leaderboard, and daily challenge bests are stored locally with Android DataStore.
+
 ## Run On Emulator Or Device
 
 1. Open this repository in Android Studio.
@@ -58,36 +92,25 @@ The debug APK is produced at `app/build/outputs/apk/debug/app-debug.apk` after a
 3. Select the `app` run configuration.
 4. Run on an emulator or Android 7.0/API 24+ device.
 
-## Release Readiness Checklist
-
-- App label: "Arcane Circuit Defense".
-- Package id: `com.nicolaielgame`.
-- Version: `versionCode = 1`, `versionName = "0.1.0"`.
-- Local-only systems: profiles, progress, achievements, leaderboard, and daily challenge bests.
-- No backend, login, ads, in-app purchases, or external game engine.
-- Splash/theme colors and launcher vector are present.
-- Command-line validation target: `testDebugUnitTest`, `assembleDebug`, and `git diff --check`.
-- Play Store publishing is intentionally not configured yet.
-
 ## Known Limitations
 
-- Visuals are still generated Canvas shapes rather than authored production art.
-- Audio uses generated Android tones, and music is a persisted placeholder toggle only.
+- Production art and SFX are not bundled yet; the app uses fallback Canvas/vector visuals and generated tones.
 - Daily challenge is local-only and date-seeded; there is no server authority or anti-cheat.
 - Leaderboard is local-only and can be reset with profile data.
-- Balance is broader in Iteration 6 but still needs longer real-device playtesting.
+- Balance is broader in Iteration 7 but still needs longer real-device playtesting.
 - Enemy movement uses grid-space interpolation rather than advanced steering.
-- Tablet and foldable layouts rely on responsive spacing, not a dedicated large-screen UI.
+- Tablet and foldable layouts are acceptable but not fully custom.
 - Ability targeting is automatic rather than manually aimed.
 - Save slots are local profiles without cloud sync.
+- Music remains a persisted placeholder until a safe CC0 loop is bundled.
 
-## Suggested Iteration 7 Roadmap
+## Suggested Iteration 8 Roadmap
 
-- Real authored art and sound pack.
-- More daily challenge modifiers.
-- Local achievements expansion.
-- Advanced tower targeting visuals.
-- Campaign map.
-- Local economy/progression rewards.
-- Play Store internal testing track.
+- Play Store internal testing.
+- Real device QA checklist.
+- Balancing from playtest data.
+- Onboarding polish.
+- Campaign reward economy.
+- More authored level art.
 - Optional cloud leaderboard later.
+- Optional monetization later.
