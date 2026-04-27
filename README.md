@@ -1,8 +1,31 @@
 # Arcane Circuit Defense
 
-Arcane Circuit Defense is a native Android 2.5D isometric tower defense prototype built with Kotlin, Gradle, Jetpack Compose, and Compose Canvas. Enemies spawn in deterministic waves and dynamically reroute with A* pathfinding when the player places, upgrades, or sells towers.
+Arcane Circuit Defense is a tower defense game currently split into two tracks:
 
-## Current Iteration 9 Features
+- The existing Kotlin/Jetpack Compose Android app is the validated gameplay prototype.
+- The next major direction is a Unity 3D migration for real low-poly 3D visuals on Android.
+
+The Android prototype remains preserved and buildable as the reference implementation for rules, balance, progression, persistence, and UX. Enemies spawn in deterministic waves and dynamically reroute with A* pathfinding when the player places, upgrades, or sells towers.
+
+## Current Iteration 10 Direction
+
+Iteration 10 starts the migration from Compose Canvas 2.5D into a Unity-based low-poly 3D tower defense implementation. The goal is not to replace the Android app immediately; the goal is to capture the game specification, preserve the proven prototype, and add a serious Unity starter structure for the first 3D vertical slice.
+
+New migration documents:
+
+- `docs/MIGRATION_TO_UNITY.md`
+- `docs/GAMEPLAY_SPEC.md`
+- `docs/VISUAL_DIRECTION_3D.md`
+- `docs/ASSET_PLAN_3D.md`
+- `docs/LOCALIZATION_PLAN.md`
+
+Unity starter:
+
+- `unity/ArcaneCircuitDefense3D/`
+- Starter C# scripts for game management, grid, pathfinding, towers, enemies, waves, economy, camera, build controls, and HUD.
+- A documented vertical-slice target: one 3D map, dynamic A*, buildable tiles, spawn/base, one tower, one enemy, five waves, gold/lives/score, and Start Wave HUD.
+
+## Android Prototype Features
 
 - Native Android Kotlin app with Jetpack Compose screens and centralized Compose Canvas rendering.
 - Profile select, tutorial, main menu, campaign map, daily challenge, local leaderboard, settings, achievements, pause, victory, and game over flows.
@@ -75,7 +98,7 @@ Keep `local.properties` local. Do not commit signing keys or local keystores.
 
 ## Release Status
 
-Iteration 9 is a visual-integration polish pass, not a Play Store release preparation pass.
+Iteration 10 is a migration-planning and Unity-starter pass, not a Play Store release preparation pass.
 
 - App label: "Arcane Circuit Defense".
 - Package id: `com.nicolaielgame`.
@@ -102,6 +125,8 @@ Arcane Circuit Defense is local-only in Iteration 9.
 
 ## Known Limitations
 
+- The production visual target has moved to Unity 3D; Compose Canvas should now be treated as the gameplay prototype renderer.
+- The Unity folder is a starter skeleton, not a complete Unity project export with scenes, prefabs, imported 3D assets, or generated Unity metadata.
 - The bundled sprites are a curated Kenney prototype pass, not final authored art for every enemy family.
 - Some enemies use Kenney crystal/rock/tower-defense props as readable stand-ins while keeping color-coded Canvas fallback in high contrast mode.
 - Bundled music is a prototype loop and may need replacement during final audio direction.
@@ -113,12 +138,12 @@ Arcane Circuit Defense is local-only in Iteration 9.
 - Ability targeting is automatic rather than manually aimed.
 - Save slots are local profiles without cloud sync.
 
-## Suggested Iteration 10 Roadmap
+## Suggested Iteration 11 Roadmap
 
-- Real device QA checklist and emulator smoke testing.
-- More authored level art and final enemy-family sprite choices.
-- Balancing from playtest data.
-- Onboarding polish.
-- Campaign reward economy.
-- Play Store internal testing preparation.
-- Optional cloud leaderboard later.
+- Open the Unity starter in Unity Hub and commit generated-safe project metadata.
+- Build the first real 3D scene using the starter scripts.
+- Import a tiny CC0 low-poly asset batch for one map, one tower, one enemy, and one projectile.
+- Port Level 1 data into Unity `ScriptableObject` assets.
+- Add object pooling for enemies, projectiles, and VFX.
+- Profile the vertical slice on Android hardware.
+- Keep the Android prototype as the reference until Unity reaches gameplay parity.
