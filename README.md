@@ -2,12 +2,13 @@
 
 Arcane Circuit Defense is a native Android 2.5D isometric tower defense prototype built with Kotlin, Gradle, Jetpack Compose, and Compose Canvas. Enemies spawn in deterministic waves and dynamically reroute with A* pathfinding when the player places, upgrades, or sells towers.
 
-## Current Iteration 8 Features
+## Current Iteration 9 Features
 
 - Native Android Kotlin app with Jetpack Compose screens and centralized Compose Canvas rendering.
 - Profile select, tutorial, main menu, campaign map, daily challenge, local leaderboard, settings, achievements, pause, victory, and game over flows.
 - Seven handcrafted campaign levels with progression unlocks through Level 7.
-- Iteration 8 visual cohesion pass: deeper isometric tile sides, stronger board shadows, sprite drop shadows, improved tower/enemy anchoring, clearer boss scale, and better projectile/aim-beam alignment.
+- Iteration 9 visual integration pass: tower sprite artifacts removed, range rings reduced, level dots moved out of board rendering, better sprite grounding, clearer projectile/impact alignment, and less Canvas overdraw on top of real assets.
+- Frost tower now uses a blue ice-themed replacement sprite instead of the incorrect red tile stand-in.
 - Daily Challenge now uses the same upgraded 2.5D visual direction as campaign play, plus a polished daily preview panel and daily in-run badge.
 - Rebuilt campaign map presentation with a larger fantasy-tech map panel, route path, completed/locked/current node styling, boss markers, daily portal, and records landmark.
 - Daily challenge mode with a deterministic local date seed, fixed daily difficulty, fixed daily modifiers, generated daily waves, and local best daily score saving.
@@ -24,18 +25,19 @@ Arcane Circuit Defense is a native Android 2.5D isometric tower defense prototyp
 - Bundled real CC0 Kenney assets for tiles, towers, enemy/boss stand-ins, projectile accents, UI accents, and gameplay SFX.
 - Fallback-safe asset catalog and loaders so missing optional assets keep using Canvas/vector/tone fallbacks.
 - SoundPool SFX playback for bundled OGG clips with Android generated-tone fallback.
-- Music playback support is fallback-safe and respects the persisted music setting, but no music loop is bundled yet.
+- A lightweight CC0 Kenney music loop is bundled at `app/src/main/assets/audio/music/music_loop.ogg`; music playback respects the persisted music setting and uses subtle volume.
 - Release-oriented vector launcher icon, splash polish, and version `0.2.0` / versionCode `2`.
 - CREDITS and asset-integration documentation with CC0 Kenney pack recommendations.
 
 ## Asset And Audio Integration
 
-Iterations 7B and 8 bundle a small curated set of official Kenney CC0 assets while keeping the build safe if optional files are missing.
+Iterations 7B through 9 bundle a small curated set of Kenney CC0 assets while keeping the build safe if optional files are missing.
 
 - Bundled visuals include selected WebP files from Kenney Tower Defense and UI Pack - Sci-Fi.
+- The Frost tower sprite is project-authored to replace a visually incorrect red placeholder while staying within the existing asset pipeline.
 - Bundled audio includes selected OGG files from Kenney Interface Sounds, Impact Sounds, Digital Audio, and Sci-fi Sounds.
-- Project-authored Canvas/vector/tone fallbacks remain active for high contrast mode, missing files, placement denial, and optional music.
-- Music support looks for `app/src/main/assets/audio/music/music_loop.ogg`. No loop is bundled in Iteration 8 because the local sandbox could verify Kenney CC0 music pages but could not download a lightweight official loop.
+- Bundled music uses Kenney Music Loops `Space Cadet.ogg`, copied as `audio/music/music_loop.ogg`.
+- Project-authored Canvas/vector/tone fallbacks remain active for high contrast mode, missing files, and placement denial.
 - Manual integration and future asset guidance live in `docs/ASSET_INTEGRATION.md`.
 - Credits and license notes live in `CREDITS.md`.
 
@@ -73,7 +75,7 @@ Keep `local.properties` local. Do not commit signing keys or local keystores.
 
 ## Release Status
 
-Iteration 8 is a release-prototype polish pass, not a Play Store release preparation pass.
+Iteration 9 is a visual-integration polish pass, not a Play Store release preparation pass.
 
 - App label: "Arcane Circuit Defense".
 - Package id: `com.nicolaielgame`.
@@ -82,7 +84,7 @@ Iteration 8 is a release-prototype polish pass, not a Play Store release prepara
 
 ## Privacy Note
 
-Arcane Circuit Defense is local-only in Iteration 8.
+Arcane Circuit Defense is local-only in Iteration 9.
 
 - No backend.
 - No account or login.
@@ -102,7 +104,7 @@ Arcane Circuit Defense is local-only in Iteration 8.
 
 - The bundled sprites are a curated Kenney prototype pass, not final authored art for every enemy family.
 - Some enemies use Kenney crystal/rock/tower-defense props as readable stand-ins while keeping color-coded Canvas fallback in high contrast mode.
-- Music playback support is implemented, but no music loop is bundled until a lightweight CC0 loop can be downloaded and reviewed locally.
+- Bundled music is a prototype loop and may need replacement during final audio direction.
 - Daily challenge is local-only and date-seeded; there is no server authority or anti-cheat.
 - Leaderboard is local-only and can be reset with profile data.
 - Balance still needs longer real-device playtesting.
@@ -111,10 +113,9 @@ Arcane Circuit Defense is local-only in Iteration 8.
 - Ability targeting is automatic rather than manually aimed.
 - Save slots are local profiles without cloud sync.
 
-## Suggested Iteration 9 Roadmap
+## Suggested Iteration 10 Roadmap
 
 - Real device QA checklist and emulator smoke testing.
-- Bundle a verified lightweight CC0 background loop.
 - More authored level art and final enemy-family sprite choices.
 - Balancing from playtest data.
 - Onboarding polish.

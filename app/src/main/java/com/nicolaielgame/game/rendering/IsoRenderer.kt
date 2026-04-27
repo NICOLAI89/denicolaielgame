@@ -287,15 +287,15 @@ class IsoRenderer(
         val center = cellCenter(cell, layout)
         val radius = range * layout.tileWidth * 0.48f
         drawCircle(
-            color = color.copy(alpha = 0.12f),
+            color = color.copy(alpha = 0.055f),
             radius = radius,
             center = center,
         )
         drawCircle(
-            color = color.copy(alpha = 0.42f),
+            color = color.copy(alpha = 0.28f),
             radius = radius,
             center = center,
-            style = Stroke(width = 2.5f),
+            style = Stroke(width = 2f),
         )
     }
 
@@ -303,35 +303,29 @@ class IsoRenderer(
         val center = cellCenter(tower.cell, layout)
         val w = layout.tileWidth
         val h = layout.tileHeight
-        val fireFlash = (tower.cooldown / tower.fireInterval).coerceIn(0f, 1f)
+        val fireFlash = (tower.aimBeamTimeRemaining / 0.18f).coerceIn(0f, 1f)
 
-        drawSpriteShadow(center + Offset(w * 0.04f, h * 0.12f), w * 0.62f, h * 0.34f, 0.38f)
-        drawPath(
-            diamondPath(center + Offset(0f, h * 0.12f), w * 0.48f, h * 0.28f),
-            Color.Black.copy(alpha = 0.24f),
-        )
-        drawPath(
-            diamondPath(center + Offset(0f, h * 0.05f), w * 0.44f, h * 0.25f),
-            tower.type.primaryColor.copy(alpha = if (highContrast) 0.98f else 0.72f),
-        )
+        drawSpriteShadow(center + Offset(w * 0.03f, h * 0.2f), w * 0.54f, h * 0.24f, 0.3f)
 
         val towerAsset = if (highContrast) null else assets.tower(tower.type)
         if (towerAsset != null) {
-            val assetWidth = w * if (tower.type == TowerType.Sniper) 0.88f else 0.96f
+            val assetWidth = w * when (tower.type) {
+                TowerType.Basic -> 0.92f
+                TowerType.Sniper -> 0.84f
+                TowerType.Frost -> 0.9f
+            }
             val assetHeight = assetWidth * towerAsset.height / towerAsset.width
             drawAnchoredImage(
                 image = towerAsset,
-                anchor = center + Offset(0f, h * 0.18f),
+                anchor = center + Offset(0f, h * 0.28f),
                 width = assetWidth,
                 height = assetHeight,
             )
-            drawCircle(
-                color = tower.type.accentColor.copy(alpha = 0.78f),
-                radius = h * 0.18f,
-                center = Offset(center.x, center.y - h * 0.72f),
-                style = Stroke(width = 3f),
-            )
         } else {
+            drawPath(
+                diamondPath(center + Offset(0f, h * 0.08f), w * 0.44f, h * 0.25f),
+                tower.type.primaryColor.copy(alpha = if (highContrast) 0.98f else 0.72f),
+            )
             when (tower.type) {
                 TowerType.Basic -> {
                     drawRoundRect(
@@ -364,7 +358,7 @@ class IsoRenderer(
 
                 TowerType.Frost -> {
                     drawRoundRect(
-                        color = tower.type.primaryColor,
+                        color = if (highContrast) Color(0xFF75E6FF) else tower.type.primaryColor,
                         topLeft = Offset(center.x - w * 0.15f, center.y - h * 0.62f),
                         size = Size(w * 0.3f, h * 0.58f),
                         cornerRadius = CornerRadius(9f, 9f),
@@ -378,32 +372,19 @@ class IsoRenderer(
                 }
             }
         }
-        drawCircle(
-            color = ArcanePalette.WarningGold,
-            radius = h * 0.13f,
-            center = Offset(center.x, center.y - h * 0.84f),
-        )
-        if (fireFlash > 0.72f) {
+
+        if (fireFlash > 0f) {
+            val flash = towerFirePoint(tower, layout)
             drawCircle(
-                color = tower.type.accentColor.copy(alpha = (fireFlash - 0.72f) * 2.8f),
-                radius = h * (0.22f + fireFlash * 0.24f),
-                center = Offset(center.x, center.y - h * 0.82f),
-                style = Stroke(width = 3f),
+                color = tower.type.accentColor.copy(alpha = fireFlash * 0.55f),
+                radius = h * (0.08f + fireFlash * 0.08f),
+                center = flash,
             )
-            drawCircle(
-                color = Color.White.copy(alpha = (fireFlash - 0.72f) * 1.8f),
-                radius = h * 0.08f,
-                center = Offset(center.x, center.y - h * 0.88f),
-            )
-        }
-        repeat(tower.level.coerceAtMost(4)) { index ->
-            drawCircle(
-                color = tower.type.accentColor,
-                radius = h * 0.045f,
-                center = Offset(
-                    center.x - h * 0.16f + index * h * 0.105f,
-                    center.y - h * 0.18f,
-                ),
+            drawLine(
+                color = Color.White.copy(alpha = fireFlash * 0.55f),
+                start = flash - Offset(w * 0.05f, h * 0.03f),
+                end = flash + Offset(w * 0.05f, h * 0.03f),
+                strokeWidth = 2f,
             )
         }
     }
@@ -429,12 +410,6 @@ class IsoRenderer(
                 anchor = center + Offset(0f, radius * 0.78f),
                 width = assetWidth,
                 height = assetHeight,
-            )
-            drawCircle(
-                color = enemy.type.accentColor.copy(alpha = if (enemy.type.isBoss) 0.72f else 0.48f),
-                radius = radius * if (enemy.type.isBoss) 1.15f else 0.86f,
-                center = bodyCenter,
-                style = Stroke(width = if (enemy.type.isBoss) 4f else 2.4f),
             )
         } else {
             drawEnemyBody(enemy.type, bodyCenter, radius, highContrast)
@@ -476,15 +451,10 @@ class IsoRenderer(
         )
         if (enemy.type.isBoss) {
             drawCircle(
-                color = enemy.type.accentColor.copy(alpha = 0.85f),
-                radius = radius * 0.24f,
-                center = center - Offset(0f, radius * 1.08f),
-            )
-            drawCircle(
-                color = enemy.type.accentColor.copy(alpha = 0.3f),
+                color = enemy.type.accentColor.copy(alpha = 0.18f),
                 radius = radius * 1.62f,
                 center = bodyCenter,
-                style = Stroke(width = 4f),
+                style = Stroke(width = 2.5f),
             )
         }
     }
@@ -682,7 +652,7 @@ class IsoRenderer(
         layout: IsoLayout,
     ) {
         val target = enemies.firstOrNull { it.id == projectile.targetEnemyId }
-        val current = gridToScreen(projectile.row, projectile.col, layout) - Offset(0f, layout.tileHeight * 0.54f)
+        val current = projectileOriginPoint(projectile, layout)
         val targetOffset = target?.let { enemyCenterPoint(it, layout) } ?: current
         val glowWidth = when (projectile.towerType) {
             TowerType.Basic -> 3.2f
@@ -704,7 +674,7 @@ class IsoRenderer(
         )
         drawCircle(
             color = projectile.towerType.accentColor,
-            radius = layout.tileHeight * if (projectile.towerType == TowerType.Sniper) 0.08f else 0.12f,
+            radius = layout.tileHeight * if (projectile.towerType == TowerType.Sniper) 0.07f else 0.095f,
             center = current,
         )
         assets.projectileEffect?.let { image ->
@@ -753,6 +723,17 @@ class IsoRenderer(
         return cellCenter(tower.cell, layout) - Offset(
             x = 0f,
             y = layout.tileHeight * when (tower.type) {
+                TowerType.Basic -> 0.78f
+                TowerType.Sniper -> 0.94f
+                TowerType.Frost -> 0.82f
+            },
+        )
+    }
+
+    private fun projectileOriginPoint(projectile: Projectile, layout: IsoLayout): Offset {
+        return gridToScreen(projectile.row, projectile.col, layout) - Offset(
+            x = 0f,
+            y = layout.tileHeight * when (projectile.towerType) {
                 TowerType.Basic -> 0.78f
                 TowerType.Sniper -> 0.94f
                 TowerType.Frost -> 0.82f
@@ -828,11 +809,6 @@ class IsoRenderer(
             color = Color.Black.copy(alpha = alpha),
             topLeft = Offset(center.x - width / 2f, center.y - height / 2f),
             size = Size(width, height),
-        )
-        drawOval(
-            color = ArcanePalette.CircuitTeal.copy(alpha = alpha * 0.18f),
-            topLeft = Offset(center.x - width * 0.42f, center.y - height * 0.4f),
-            size = Size(width * 0.84f, height * 0.72f),
         )
     }
 

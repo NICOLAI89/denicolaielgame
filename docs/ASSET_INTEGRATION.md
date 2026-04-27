@@ -1,6 +1,6 @@
 # Asset Integration
 
-Iterations 7B and 8 use a curated subset of real Kenney CC0 assets while keeping the current Canvas/vector/tone fallbacks active. Missing optional files must never break builds or gameplay.
+Iterations 7B through 9 use a curated subset of real Kenney CC0 assets while keeping the current Canvas/vector/tone fallbacks active. Missing optional files must never break builds or gameplay.
 
 ## Legal Policy
 
@@ -40,11 +40,16 @@ Preferred source: Kenney official assets. Kenney packs listed below are Creative
    - Used for enemy kill, boss death, and freeze pulse.
    - Destination: `app/src/main/assets/audio/sfx`.
 
+7. Kenney Music Loops
+   - URL: https://kenney.itch.io/kenney-game-assets
+   - Verification: Kenney Game Assets All-in-1 lists audio/music loops and Creative Commons Zero licensing.
+   - Bundled file: `Space Cadet.ogg`, copied as `app/src/main/assets/audio/music/music_loop.ogg`.
+   - Download helper used: https://gamesounds.xyz/?dir=Kenney%27s+Sound+Pack%2FMusic+Loops%2FLoops
+
 ## Not Bundled
 
 - Kenney Tower Defense Kit remains an optional future 3D reference pack. Do not include large source files in the APK unless converted and optimized.
-- No music loop is bundled yet. The music setting remains persisted, `AndroidGameMusicPlayer` looks for `audio/music/music_loop.ogg`, and `AudioRouting.shouldPlayMusic` requires a real music asset before playback.
-- Kenney Music Jingles (`https://kenney.nl/assets/music-jingles`) is verified as Creative Commons CC0 and is safe as a future source for short stingers. A lightweight loop should preferably come from Kenney Music Loops in the Kenney All-in-1 bundle, then be copied as `app/src/main/assets/audio/music/music_loop.ogg` after local review.
+- Kenney Music Jingles (`https://kenney.nl/assets/music-jingles`) is verified as Creative Commons CC0 and remains safe as a future source for short stingers.
 
 ## Folder Layout
 
@@ -103,12 +108,14 @@ Audio:
 - `audio/sfx/base_hit.ogg`
 - `audio/sfx/victory.ogg`
 - `audio/sfx/game_over.ogg`
-- Optional future `audio/music/music_loop.ogg`
+- `audio/music/music_loop.ogg`
 
 ## Optimization Notes
 
 - Bundled sprites are converted to lossless WebP and selected one-by-one from official ZIPs.
+- Iteration 9 replaces the incorrect red Frost tower stand-in with a small project-authored blue ice tower WebP.
 - Bundled SFX are OGG files copied one-by-one from official ZIPs.
+- Bundled music is one OGG loop only, kept under 350 KB.
 - Keep only used files in the APK.
 - Keep large source files, previews, and unused spritesheets out of `app/src/main/assets`.
 - Confirm all added files are listed in `CREDITS.md`.
@@ -117,13 +124,14 @@ Audio:
 
 - `GameVisualAssets.load` reads assets from `app/src/main/assets` and returns `null` for missing files.
 - `IsoRenderer` uses Kenney sprites when present and falls back to project-authored Canvas shapes when absent or when high contrast mode should favor clear generated shapes.
-- Iteration 8 adds extra Canvas polish around those assets: deeper tile side faces, sprite shadows, better tower/enemy anchoring, projectile origin offsets, and stronger map ambience.
+- Iteration 9 reduces Canvas overdraw around sprites: no permanent tower dots, no permanent tower/enemy accent rings, subtler range rings, grounded shadows, and projectile origins aligned with visible tower tops.
 - `AndroidGameSoundPlayer` attempts `SoundPool` asset playback first and falls back to Android generated tones if the clip is missing, not yet loaded, or unavailable.
 - `AndroidGameMusicPlayer` attempts looping MediaPlayer playback only when `audio/music/music_loop.ogg` exists and the persisted music setting is enabled; otherwise it stays silent.
 - `GameAssetCatalog` and `AudioRouting` expose pure logic for fallback and route tests.
 
-## Iteration 8 Visual QA Notes
+## Iteration 9 Visual QA Notes
 
 - Campaign and daily screens should use the same fantasy-tech visual language as gameplay: dark circuit backgrounds, teal/gold/violet accents, route/node depth, and clear locked/current/completed states.
 - Daily Challenge should remain a special entry point, not a separate renderer. Actual daily runs go through `GameScreen` and `IsoRenderer`.
 - Keep high contrast mode generated-shape-first so enemy/tower distinction remains readable even if decorative sprites are less visible.
+- Tower sprites should read as the primary tower visuals. Renderer overlays should be reserved for selection, range preview, firing, slow/hit feedback, and accessibility fallback.

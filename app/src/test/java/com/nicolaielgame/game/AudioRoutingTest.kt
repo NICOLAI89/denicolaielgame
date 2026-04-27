@@ -20,15 +20,17 @@ class AudioRoutingTest {
         assertTrue(AudioRouting.shouldPlayMusic(musicEnabled = true, hasMusicAsset = true))
         assertFalse(AudioRouting.shouldPlayMusic(musicEnabled = true, hasMusicAsset = false))
         assertFalse(AudioRouting.shouldPlayMusic(musicEnabled = false, hasMusicAsset = true))
+        assertTrue(AudioRouting.musicAssetPath().endsWith("audio/music/music_loop.ogg"))
     }
 
     @Test
-    fun noMusicAssetBehaviorIsDocumented() {
+    fun bundledMusicAssetIsDocumented() {
         val docs = repoFile("docs/ASSET_INTEGRATION.md").readText()
         val credits = repoFile("CREDITS.md").readText()
 
-        assertTrue("Expected docs to describe optional music fallback", "music_loop.ogg" in docs)
-        assertTrue("Expected credits to document no bundled music loop", "Music Loops" in credits)
+        assertTrue("Expected bundled music file to exist", repoFile(AudioRouting.musicAssetPath()).exists())
+        assertTrue("Expected docs to describe bundled music", "Space Cadet" in docs)
+        assertTrue("Expected credits to document bundled music", "Space Cadet" in credits)
     }
 
     @Test

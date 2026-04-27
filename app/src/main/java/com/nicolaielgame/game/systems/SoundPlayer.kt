@@ -210,7 +210,7 @@ class AndroidGameMusicPlayer(context: Context) {
                 setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
                 descriptor.close()
                 isLooping = true
-                setVolume(0.32f, 0.32f)
+                setVolume(0.22f, 0.22f)
                 prepare()
                 start()
             }

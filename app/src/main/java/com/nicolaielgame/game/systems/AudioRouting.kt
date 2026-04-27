@@ -21,6 +21,8 @@ enum class SoundEvent {
 }
 
 object AudioRouting {
+    const val MusicAssetPath = "app/src/main/assets/audio/music/music_loop.ogg"
+
     private val soundAssetPaths = mapOf(
         SoundEvent.ButtonClick to "app/src/main/assets/audio/sfx/button_click.ogg",
         SoundEvent.TowerPlaced to "app/src/main/assets/audio/sfx/tower_placed.ogg",
@@ -47,6 +49,10 @@ object AudioRouting {
 
     fun shouldPlayMusic(musicEnabled: Boolean, hasMusicAsset: Boolean): Boolean {
         return musicEnabled && hasMusicAsset
+    }
+
+    fun musicAssetPath(): String {
+        return MusicAssetPath
     }
 
     fun assetPathFor(event: SoundEvent): String? {

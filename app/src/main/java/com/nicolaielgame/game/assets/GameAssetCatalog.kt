@@ -70,7 +70,7 @@ object GameAssetCatalog {
             key = "music_loop",
             category = GameAssetCategory.AudioMusic,
             expectedPath = "app/src/main/assets/audio/music/music_loop.ogg",
-            bundledFallback = "Silence when no CC0 loop is bundled",
+            bundledFallback = "Bundled CC0 loop with silence fallback if removed",
             fallbackMode = AssetFallbackMode.GeneratedToneFallback,
         ),
     )

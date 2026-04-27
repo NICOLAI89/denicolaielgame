@@ -202,6 +202,53 @@ private fun DailyChallengeMapPreview(
                 }
             }
 
+            fun isoCenter(row: Int, col: Int): Offset {
+                return Offset(
+                    x = origin.x + (col - row) * tileWidth / 2f,
+                    y = origin.y + (col + row) * tileHeight / 2f,
+                )
+            }
+
+            val towerCell = sortedCells.firstOrNull { cell ->
+                cell !in map.scenicPath && cell !in map.buildLockedCells
+            }
+            towerCell?.let { cell ->
+                val c = isoCenter(cell.row, cell.col)
+                drawOval(
+                    color = Color.Black.copy(alpha = 0.28f),
+                    topLeft = c + Offset(-tileWidth * 0.16f, tileHeight * 0.02f),
+                    size = Size(tileWidth * 0.32f, tileHeight * 0.22f),
+                )
+                drawPath(
+                    diamond(c + Offset(0f, tileHeight * 0.02f), tileWidth * 0.26f, tileHeight * 0.18f),
+                    Color(0xFFA9F1FF),
+                )
+                drawPath(
+                    Path().apply {
+                        moveTo(c.x, c.y - tileHeight * 0.82f)
+                        lineTo(c.x + tileWidth * 0.16f, c.y - tileHeight * 0.1f)
+                        lineTo(c.x, c.y + tileHeight * 0.08f)
+                        lineTo(c.x - tileWidth * 0.16f, c.y - tileHeight * 0.1f)
+                        close()
+                    },
+                    Brush.verticalGradient(listOf(Color(0xFFE8FDFF), Color(0xFF4CBEE6))),
+                )
+            }
+
+            val enemyCell = map.scenicPath.sortedWith(compareBy({ it.row + it.col }, { it.row })).getOrNull(1)
+            enemyCell?.let { cell ->
+                val c = isoCenter(cell.row, cell.col)
+                drawOval(
+                    color = Color.Black.copy(alpha = 0.24f),
+                    topLeft = c + Offset(-tileWidth * 0.14f, tileHeight * 0.08f),
+                    size = Size(tileWidth * 0.28f, tileHeight * 0.18f),
+                )
+                drawPath(
+                    diamond(c - Offset(0f, tileHeight * 0.16f), tileWidth * 0.22f, tileHeight * 0.34f),
+                    Color(0xFFFF9AD5),
+                )
+            }
+
             val portal = Offset(size.width * 0.18f, size.height * 0.18f)
             drawCircle(Color(0xFF7C4DFF).copy(alpha = 0.2f), radius = 35f, center = portal)
             drawCircle(Color(0xFF7C4DFF), radius = 21f, center = portal, style = Stroke(width = 5f))
