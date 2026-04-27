@@ -35,4 +35,15 @@ class CampaignProgressionTest {
         assertEquals(4, CampaignProgression.nextPlayableLevelId(mixed))
         assertEquals(7, CampaignProgression.nextPlayableLevelId(allCompleted))
     }
+
+    @Test
+    fun campaignMapCurrentNodeUsesFirstUnlockedLevel() {
+        val nodes = CampaignProgression.nodes(
+            levels = LevelCatalog.levels,
+            highestUnlockedLevel = 5,
+            bestScoresByLevel = mapOf(1 to 1000, 2 to 900, 3 to 800, 4 to 700),
+        )
+
+        assertEquals(5, CampaignProgression.nextPlayableLevelId(nodes))
+    }
 }

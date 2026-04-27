@@ -110,6 +110,7 @@ class GamePreferences(context: Context) {
                 damageNumbersEnabled = preferences[Keys.DamageNumbersEnabled] ?: true,
                 highContrastMode = preferences[Keys.HighContrastMode] ?: false,
                 fpsCounterEnabled = preferences[Keys.FpsCounterEnabled] ?: false,
+                autoStartWavesEnabled = preferences[Keys.AutoStartWavesEnabled] ?: false,
                 lastDifficulty = preferences[Keys.LastDifficulty]
                     ?.let { runCatching { DifficultyMode.valueOf(it) }.getOrNull() }
                     ?: DifficultyMode.Normal,
@@ -208,6 +209,7 @@ class GamePreferences(context: Context) {
             preferences[Keys.DamageNumbersEnabled] = settings.damageNumbersEnabled
             preferences[Keys.HighContrastMode] = settings.highContrastMode
             preferences[Keys.FpsCounterEnabled] = settings.fpsCounterEnabled
+            preferences[Keys.AutoStartWavesEnabled] = settings.autoStartWavesEnabled
             preferences[Keys.LastDifficulty] = settings.lastDifficulty.name
         }
     }
@@ -338,6 +340,7 @@ class GamePreferences(context: Context) {
         val DamageNumbersEnabled = booleanPreferencesKey("damage_numbers_enabled")
         val HighContrastMode = booleanPreferencesKey("high_contrast_mode")
         val FpsCounterEnabled = booleanPreferencesKey("fps_counter_enabled")
+        val AutoStartWavesEnabled = booleanPreferencesKey("auto_start_waves_enabled")
         val LastDifficulty = stringPreferencesKey("last_difficulty")
         val UnlockedAchievements = stringSetPreferencesKey("unlocked_achievements")
         val TutorialCompleted = booleanPreferencesKey("tutorial_completed")

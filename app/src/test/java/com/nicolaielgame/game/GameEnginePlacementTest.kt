@@ -10,6 +10,7 @@ import com.nicolaielgame.game.systems.WaveDefinition
 import com.nicolaielgame.game.systems.WaveEnemyGroup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class GameEnginePlacementTest {
@@ -62,6 +63,38 @@ class GameEnginePlacementTest {
         assertFalse(state.placementAccepted)
     }
 
+    @Test
+    fun selectingActiveTowerTypeAgainDisablesPlacementMode() {
+        val level = openBuildLevel(startingGold = 200)
+        val engine = GameEngine(level)
+
+        engine.selectTowerType(TowerType.Basic)
+        val goldBeforeTap = engine.state.value.gold
+        engine.handleCellTap(GridCell(0, 1))
+
+        val state = engine.state.value
+        assertNull(state.selectedTowerType)
+        assertEquals(goldBeforeTap, state.gold)
+        assertEquals(0, state.towers.size)
+        assertFalse(state.placementAccepted)
+    }
+
+    @Test
+    fun tappingExistingTowerInspectsInsteadOfPlacingWhilePlacementModeIsActive() {
+        val level = openBuildLevel(startingGold = 400)
+        val engine = GameEngine(level)
+
+        engine.placeTower(GridCell(0, 1))
+        val tower = engine.state.value.towers.single()
+        engine.selectTowerType(TowerType.Sniper)
+        engine.handleCellTap(tower.cell)
+
+        val state = engine.state.value
+        assertEquals(1, state.towers.size)
+        assertEquals(tower.id, state.selectedTowerId)
+        assertNull(state.selectedTowerType)
+    }
+
     private fun assertTrueNoTowersOrSpend(stateGold: Int, towerCount: Int, expectedGold: Int) {
         assertEquals(expectedGold, stateGold)
         assertEquals(0, towerCount)
@@ -81,6 +114,22 @@ class GameEnginePlacementTest {
                     spawnInterval = 1f,
                 ),
             ),
+        )
+    }
+
+    private fun openBuildLevel(startingGold: Int): LevelDefinition {
+        val spawn = GridCell(1, 0)
+        val base = GridCell(1, 2)
+        return testLevel(
+            map = GameMap(
+                rows = 3,
+                cols = 3,
+                spawn = spawn,
+                base = base,
+                buildLockedCells = setOf(spawn, base),
+                scenicPath = setOf(spawn, GridCell(1, 1), base),
+            ),
+            startingGold = startingGold,
         )
     }
 }

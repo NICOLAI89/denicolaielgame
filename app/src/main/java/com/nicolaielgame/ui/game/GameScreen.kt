@@ -3,6 +3,8 @@ package com.nicolaielgame.ui.game
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nicolaielgame.data.GameSettings
 import com.nicolaielgame.game.assets.GameVisualAssets
 import com.nicolaielgame.game.engine.GameEngine
 import com.nicolaielgame.game.model.AbilityType
@@ -59,12 +63,10 @@ fun GameScreen(
     level: LevelDefinition,
     difficulty: DifficultyMode,
     bestScore: Int,
-    showGrid: Boolean,
-    screenShakeEnabled: Boolean,
-    damageNumbersEnabled: Boolean,
-    highContrastMode: Boolean,
-    fpsCounterEnabled: Boolean,
+    settings: GameSettings,
+    runBadge: String? = null,
     soundPlayer: SoundPlayer,
+    onSettingsChanged: (GameSettings) -> Unit,
     onBackToMenu: () -> Unit,
     onRunFinalized: suspend (GameRunResult) -> Unit,
 ) {
@@ -75,6 +77,10 @@ fun GameScreen(
 
     LaunchedEffect(bestScore) {
         engine.setBestScore(bestScore)
+    }
+
+    LaunchedEffect(settings.autoStartWavesEnabled) {
+        engine.setAutoStartWavesEnabled(settings.autoStartWavesEnabled)
     }
 
     LaunchedEffect(Unit) {
@@ -139,11 +145,9 @@ fun GameScreen(
         onSetTowerTargetingMode = engine::setTowerTargetingMode,
         onActivateAbility = engine::activateAbility,
         onStartNextWave = engine::startNextWave,
-        showGrid = showGrid,
-        screenShakeEnabled = screenShakeEnabled,
-        damageNumbersEnabled = damageNumbersEnabled,
-        highContrastMode = highContrastMode,
-        fpsCounterEnabled = fpsCounterEnabled,
+        settings = settings,
+        runBadge = runBadge,
+        onSettingsChanged = onSettingsChanged,
         performanceStats = performanceStats,
     )
 }
@@ -162,26 +166,32 @@ private fun GameScaffold(
     onSetTowerTargetingMode: (Int, TargetingMode) -> Unit,
     onActivateAbility: (AbilityType) -> Unit,
     onStartNextWave: () -> Unit,
-    showGrid: Boolean,
-    screenShakeEnabled: Boolean,
-    damageNumbersEnabled: Boolean,
-    highContrastMode: Boolean,
-    fpsCounterEnabled: Boolean,
+    settings: GameSettings,
+    runBadge: String?,
+    onSettingsChanged: (GameSettings) -> Unit,
     performanceStats: PerformanceStats,
 ) {
+    var showPauseSettings by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF071413)),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            HudBar(state = state, onPause = onPause, onStartNextWave = onStartNextWave)
+            HudBar(
+                state = state,
+                autoStartWavesEnabled = settings.autoStartWavesEnabled,
+                runBadge = runBadge,
+                onPause = onPause,
+                onStartNextWave = onStartNextWave,
+            )
             GameCanvas(
                 state = state,
-                showGrid = showGrid,
-                screenShakeEnabled = screenShakeEnabled,
-                damageNumbersEnabled = damageNumbersEnabled,
-                highContrastMode = highContrastMode,
+                showGrid = settings.showGrid,
+                screenShakeEnabled = settings.screenShakeEnabled,
+                damageNumbersEnabled = settings.damageNumbersEnabled,
+                highContrastMode = settings.highContrastMode,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
@@ -189,6 +199,7 @@ private fun GameScaffold(
             )
             BottomBar(
                 state = state,
+                autoStartWavesEnabled = settings.autoStartWavesEnabled,
                 onSelectTowerType = onSelectTowerType,
                 onUpgradeTower = onUpgradeTower,
                 onSellTower = onSellTower,
@@ -198,11 +209,30 @@ private fun GameScaffold(
         }
 
         when (state.status) {
-            GameStatus.Paused -> PauseOverlay(
-                onResume = onResume,
-                onRestart = onRestart,
-                onBackToMenu = onBackToMenu,
-            )
+            GameStatus.Paused -> {
+                if (showPauseSettings) {
+                    PauseSettingsOverlay(
+                        settings = settings,
+                        onSettingsChanged = onSettingsChanged,
+                        onBack = { showPauseSettings = false },
+                    )
+                } else {
+                    PauseOverlay(
+                        settings = settings,
+                        onSettingsChanged = onSettingsChanged,
+                        onOpenSettings = { showPauseSettings = true },
+                        onResume = {
+                            showPauseSettings = false
+                            onResume()
+                        },
+                        onRestart = {
+                            showPauseSettings = false
+                            onRestart()
+                        },
+                        onBackToMenu = onBackToMenu,
+                    )
+                }
+            }
 
             GameStatus.GameOver -> TerminalOverlay(
                 title = "Base Lost",
@@ -230,7 +260,7 @@ private fun GameScaffold(
         if (state.waveBannerTimeRemaining > 0f && state.waveBanner.isNotBlank() && state.status == GameStatus.Running) {
             WaveBanner(state = state)
         }
-        if (fpsCounterEnabled) {
+        if (settings.fpsCounterEnabled) {
             PerformanceOverlay(performanceStats = performanceStats)
         }
     }
@@ -268,6 +298,8 @@ private fun PerformanceOverlay(performanceStats: PerformanceStats) {
 @Composable
 private fun HudBar(
     state: GameState,
+    autoStartWavesEnabled: Boolean,
+    runBadge: String?,
     onPause: () -> Unit,
     onStartNextWave: () -> Unit,
 ) {
@@ -289,7 +321,11 @@ private fun HudBar(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "Wave ${state.wave.currentWave}/${state.wave.totalWaves}",
+                    text = buildString {
+                        append("Wave ${state.wave.currentWave}/${state.wave.totalWaves}")
+                        if (autoStartWavesEnabled) append("  Auto")
+                        if (!runBadge.isNullOrBlank()) append("  $runBadge")
+                    },
                     color = Color(0xFFB8DAD2),
                     fontSize = 11.sp,
                 )
@@ -409,6 +445,7 @@ private fun GameCanvas(
 @Composable
 private fun BottomBar(
     state: GameState,
+    autoStartWavesEnabled: Boolean,
     onSelectTowerType: (TowerType) -> Unit,
     onUpgradeTower: (Int) -> Unit,
     onSellTower: (Int) -> Unit,
@@ -444,7 +481,9 @@ private fun BottomBar(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = "Selected ${state.selectedTowerType.shortLabel} ${state.selectedTowerType.baseCost}g",
+                    text = state.selectedTowerType?.let { type ->
+                        "Selected ${type.shortLabel} ${type.baseCost}g"
+                    } ?: "Placement off",
                     color = MaterialTheme.colorScheme.secondary,
                     fontWeight = FontWeight.Bold,
                 )
@@ -478,7 +517,11 @@ private fun BottomBar(
             }
             if (state.wave.nextWaveInSeconds > 0f) {
                 Text(
-                    text = "Next wave in ${state.wave.nextWaveInSeconds.toInt() + 1}s",
+                    text = if (autoStartWavesEnabled) {
+                        "Auto wave in ${state.wave.nextWaveInSeconds.toInt() + 1}s"
+                    } else {
+                        "Next wave in ${state.wave.nextWaveInSeconds.toInt() + 1}s"
+                    },
                     color = Color(0xFFF6C55D),
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 2.dp),
@@ -496,7 +539,7 @@ private fun BottomBar(
 
 @Composable
 private fun TowerTypeSelector(
-    selectedType: TowerType,
+    selectedType: TowerType?,
     gold: Int,
     onSelectTowerType: (TowerType) -> Unit,
 ) {
@@ -707,6 +750,9 @@ private fun SelectedTowerPanel(
 
 @Composable
 private fun PauseOverlay(
+    settings: GameSettings,
+    onSettingsChanged: (GameSettings) -> Unit,
+    onOpenSettings: () -> Unit,
     onResume: () -> Unit,
     onRestart: () -> Unit,
     onBackToMenu: () -> Unit,
@@ -719,6 +765,17 @@ private fun PauseOverlay(
             color = Color.White,
         )
         Spacer(modifier = Modifier.height(18.dp))
+        PauseToggleRow(
+            label = "Sound",
+            checked = settings.soundEnabled,
+            onCheckedChange = { onSettingsChanged(settings.copy(soundEnabled = it)) },
+        )
+        PauseToggleRow(
+            label = "Auto-start waves",
+            checked = settings.autoStartWavesEnabled,
+            onCheckedChange = { onSettingsChanged(settings.copy(autoStartWavesEnabled = it)) },
+        )
+        Spacer(modifier = Modifier.height(12.dp))
         Button(
             onClick = onResume,
             modifier = Modifier.fillMaxWidth(),
@@ -736,12 +793,86 @@ private fun PauseOverlay(
         }
         Spacer(modifier = Modifier.height(10.dp))
         OutlinedButton(
+            onClick = onOpenSettings,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+        ) {
+            Text("Settings")
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        OutlinedButton(
             onClick = onBackToMenu,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(8.dp),
         ) {
             Text("Back to Menu")
         }
+    }
+}
+
+@Composable
+private fun PauseSettingsOverlay(
+    settings: GameSettings,
+    onSettingsChanged: (GameSettings) -> Unit,
+    onBack: () -> Unit,
+) {
+    OverlayShell {
+        Text(
+            text = "Settings",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Black,
+            color = Color.White,
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        PauseToggleRow("Sound", settings.soundEnabled) { onSettingsChanged(settings.copy(soundEnabled = it)) }
+        PauseToggleRow("Music", settings.musicEnabled) { onSettingsChanged(settings.copy(musicEnabled = it)) }
+        PauseToggleRow("Auto-start waves", settings.autoStartWavesEnabled) {
+            onSettingsChanged(settings.copy(autoStartWavesEnabled = it))
+        }
+        PauseToggleRow("Show grid", settings.showGrid) { onSettingsChanged(settings.copy(showGrid = it)) }
+        PauseToggleRow("Screen shake", settings.screenShakeEnabled) {
+            onSettingsChanged(settings.copy(screenShakeEnabled = it))
+        }
+        PauseToggleRow("Damage numbers", settings.damageNumbersEnabled) {
+            onSettingsChanged(settings.copy(damageNumbersEnabled = it))
+        }
+        PauseToggleRow("High contrast", settings.highContrastMode) {
+            onSettingsChanged(settings.copy(highContrastMode = it))
+        }
+        PauseToggleRow("FPS counter", settings.fpsCounterEnabled) {
+            onSettingsChanged(settings.copy(fpsCounterEnabled = it))
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Button(
+            onClick = onBack,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp),
+        ) {
+            Text("Back to Pause")
+        }
+    }
+}
+
+@Composable
+private fun PauseToggleRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = label,
+            color = Color(0xFFEAF7F2),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
@@ -814,7 +945,9 @@ private fun OverlayShell(content: @Composable ColumnScope.() -> Unit) {
                 .padding(horizontal = 28.dp),
         ) {
             Column(
-                modifier = Modifier.padding(22.dp),
+                modifier = Modifier
+                    .padding(22.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 content = content,
             )

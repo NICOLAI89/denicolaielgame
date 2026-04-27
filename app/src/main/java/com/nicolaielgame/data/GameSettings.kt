@@ -10,5 +10,6 @@ data class GameSettings(
     val damageNumbersEnabled: Boolean = true,
     val highContrastMode: Boolean = false,
     val fpsCounterEnabled: Boolean = false,
+    val autoStartWavesEnabled: Boolean = false,
     val lastDifficulty: DifficultyMode = DifficultyMode.Normal,
 )

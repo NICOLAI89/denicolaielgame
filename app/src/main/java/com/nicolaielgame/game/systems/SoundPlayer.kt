@@ -3,6 +3,7 @@ package com.nicolaielgame.game.systems
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioManager
+import android.media.MediaPlayer
 import android.media.SoundPool
 import android.media.ToneGenerator
 
@@ -166,6 +167,66 @@ class AndroidGameSoundPlayer(context: Context) : SoundPlayer {
             SoundEvent.Victory to "audio/sfx/victory.ogg",
             SoundEvent.GameOver to "audio/sfx/game_over.ogg",
         )
+    }
+}
+
+class AndroidGameMusicPlayer(context: Context) {
+    private val appContext = context.applicationContext
+    private var player: MediaPlayer? = null
+
+    fun setEnabled(enabled: Boolean) {
+        if (AudioRouting.shouldPlayMusic(enabled, hasBundledMusic())) {
+            start()
+        } else {
+            stop()
+        }
+    }
+
+    fun hasBundledMusic(): Boolean {
+        return runCatching {
+            appContext.assets.openFd(MusicAssetPath).use { Unit }
+        }.isSuccess
+    }
+
+    fun release() {
+        stop()
+    }
+
+    private fun start() {
+        val existing = player
+        if (existing != null) {
+            if (!existing.isPlaying) runCatching { existing.start() }
+            return
+        }
+        val descriptor = runCatching { appContext.assets.openFd(MusicAssetPath) }.getOrNull() ?: return
+        player = runCatching {
+            MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_GAME)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build(),
+                )
+                setDataSource(descriptor.fileDescriptor, descriptor.startOffset, descriptor.length)
+                descriptor.close()
+                isLooping = true
+                setVolume(0.32f, 0.32f)
+                prepare()
+                start()
+            }
+        }.getOrNull()
+    }
+
+    private fun stop() {
+        runCatching {
+            player?.stop()
+            player?.release()
+        }
+        player = null
+    }
+
+    companion object {
+        const val MusicAssetPath = "audio/music/music_loop.ogg"
     }
 }
 

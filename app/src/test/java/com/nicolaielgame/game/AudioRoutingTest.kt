@@ -2,6 +2,7 @@ package com.nicolaielgame.game
 
 import com.nicolaielgame.game.systems.AudioRouting
 import com.nicolaielgame.game.systems.SoundEvent
+import java.io.File
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -22,6 +23,15 @@ class AudioRoutingTest {
     }
 
     @Test
+    fun noMusicAssetBehaviorIsDocumented() {
+        val docs = repoFile("docs/ASSET_INTEGRATION.md").readText()
+        val credits = repoFile("CREDITS.md").readText()
+
+        assertTrue("Expected docs to describe optional music fallback", "music_loop.ogg" in docs)
+        assertTrue("Expected credits to document no bundled music loop", "Music Loops" in credits)
+    }
+
+    @Test
     fun bundledSoundRoutesCoverGameplayEventsAndLeaveDeniedToneAsFallback() {
         val availablePaths = SoundEvent.entries
             .mapNotNull(AudioRouting::assetPathFor)
@@ -34,5 +44,11 @@ class AudioRoutingTest {
         assertTrue(SoundEvent.BossDeath in routedEvents)
         assertTrue(SoundEvent.GameOver in routedEvents)
         assertFalse(SoundEvent.PlacementDenied in routedEvents)
+    }
+
+    private fun repoFile(path: String): File {
+        return sequenceOf(File(path), File("..", path))
+            .firstOrNull { it.exists() }
+            ?: error("Could not find $path from ${File(".").absolutePath}")
     }
 }

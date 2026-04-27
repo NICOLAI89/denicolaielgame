@@ -18,8 +18,10 @@ import com.nicolaielgame.game.model.RunStats
 import com.nicolaielgame.game.model.TargetingMode
 import com.nicolaielgame.game.model.Tower
 import com.nicolaielgame.game.model.TowerType
+import com.nicolaielgame.game.model.WavePhase
 import com.nicolaielgame.game.pathfinding.PathFinder
 import com.nicolaielgame.game.systems.AbilitySystem
+import com.nicolaielgame.game.systems.AutoWaveStarter
 import com.nicolaielgame.game.systems.SilentSoundPlayer
 import com.nicolaielgame.game.systems.SoundPlayer
 import com.nicolaielgame.game.systems.TargetingSelector
@@ -47,6 +49,8 @@ class GameEngine(
     private var nextProjectileId = 1
     private var nextHitEffectId = 1
     private var nextAbilityEffectId = 1
+    private var autoStartWavesEnabled = false
+    private var autoStartCountdown = AutoWaveStarter.DelaySeconds
 
     val state: StateFlow<GameState> = mutableState.asStateFlow()
 
@@ -65,7 +69,17 @@ class GameEngine(
         nextProjectileId = 1
         nextHitEffectId = 1
         nextAbilityEffectId = 1
+        autoStartCountdown = AutoWaveStarter.DelaySeconds
         mutableState.value = createInitialState(bestScore)
+    }
+
+    fun setAutoStartWavesEnabled(enabled: Boolean) {
+        autoStartWavesEnabled = enabled
+        if (!enabled) {
+            autoStartCountdown = AutoWaveStarter.DelaySeconds
+            val current = mutableState.value
+            mutableState.value = current.copy(wave = current.wave.copy(nextWaveInSeconds = 0f))
+        }
     }
 
     fun setBestScore(bestScore: Int) {
@@ -77,6 +91,19 @@ class GameEngine(
 
     fun selectTowerType(type: TowerType) {
         val current = mutableState.value
+        if (current.selectedTowerType == type) {
+            val selectedTower = current.selectedTowerId?.let { towerId ->
+                current.towers.firstOrNull { it.id == towerId }
+            }
+            mutableState.value = current.copy(
+                selectedTowerType = null,
+                rangePreview = selectedTower?.let { RangePreview(it.cell, it.range, it.type.accentColor) },
+                placementMessage = "Placement off. Tap a tower to inspect it.",
+                placementAccepted = true,
+            )
+            return
+        }
+
         val previewCell = current.selectedCell?.takeIf { cell ->
             current.towers.none { it.cell == cell }
         }
@@ -104,6 +131,7 @@ class GameEngine(
         mutableState.value = current.copy(
             selectedCell = tower.cell,
             selectedTowerId = tower.id,
+            selectedTowerType = null,
             rangePreview = RangePreview(tower.cell, tower.range, tower.type.accentColor),
             placementMessage = "${tower.type.shortLabel} tower selected.",
             placementAccepted = true,
@@ -119,6 +147,7 @@ class GameEngine(
             },
             selectedTowerId = towerId,
             selectedCell = tower.cell,
+            selectedTowerType = null,
             rangePreview = RangePreview(tower.cell, tower.range, tower.type.accentColor),
             placementMessage = "${tower.type.shortLabel} targeting ${mode.title}.",
             placementAccepted = true,
@@ -406,7 +435,17 @@ class GameEngine(
     fun placeTower(cell: GridCell) {
         val current = mutableState.value
         if (current.status != GameStatus.Running) return
-        val type = current.selectedTowerType
+        val type = current.selectedTowerType ?: run {
+            mutableState.value = current.copy(
+                selectedCell = cell,
+                selectedTowerId = null,
+                rangePreview = null,
+                placementMessage = "Select a tower type before placing.",
+                placementAccepted = false,
+            )
+            soundPlayer.placementDenied()
+            return
+        }
 
         fun reject(message: String) {
             mutableState.value = current.copy(
@@ -572,7 +611,7 @@ class GameEngine(
             deltaSeconds = delta,
         )
         waveManager.completeWaveIfCleared(hasAliveEnemies = enemies.isNotEmpty())
-        val waveSnapshot = waveManager.snapshot(aliveEnemies = enemies.size)
+        var waveSnapshot = waveManager.snapshot(aliveEnemies = enemies.size)
         runStats = runStats.copy(wavesCompleted = maxOf(runStats.wavesCompleted, waveSnapshot.wavesCompleted))
 
         if (lives <= 0) {
@@ -586,6 +625,27 @@ class GameEngine(
             shakeIntensity = maxOf(shakeIntensity, 4.2f)
             soundPlayer.victory()
         }
+
+        autoStartCountdown = AutoWaveStarter.nextDelay(
+            enabled = autoStartWavesEnabled,
+            status = status,
+            wave = waveSnapshot,
+            currentDelaySeconds = autoStartCountdown,
+            deltaSeconds = delta,
+        )
+        val shouldAutoStartWave = AutoWaveStarter.shouldStartNextWave(
+            enabled = autoStartWavesEnabled,
+            status = status,
+            wave = waveSnapshot,
+            delaySeconds = autoStartCountdown,
+        )
+        waveSnapshot = waveSnapshot.copy(
+            nextWaveInSeconds = if (autoStartWavesEnabled && status == GameStatus.Running && waveSnapshot.phase == WavePhase.Cleared) {
+                autoStartCountdown
+            } else {
+                0f
+            },
+        )
 
         val agedHitEffects = current.hitEffects
             .map { it.copy(age = it.age + delta) }
@@ -614,6 +674,10 @@ class GameEngine(
             pathPreview = current.pathPreview,
             wave = waveSnapshot,
         )
+        if (shouldAutoStartWave) {
+            autoStartCountdown = AutoWaveStarter.DelaySeconds
+            startNextWave()
+        }
     }
 
     private fun createInitialState(bestScore: Int): GameState {

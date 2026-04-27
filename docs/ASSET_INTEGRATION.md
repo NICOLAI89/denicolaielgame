@@ -1,6 +1,6 @@
 # Asset Integration
 
-Iteration 7B adds a curated subset of real Kenney CC0 assets while keeping the current Canvas/vector/tone fallbacks active. Missing optional files must never break builds or gameplay.
+Iterations 7B and 8 use a curated subset of real Kenney CC0 assets while keeping the current Canvas/vector/tone fallbacks active. Missing optional files must never break builds or gameplay.
 
 ## Legal Policy
 
@@ -43,7 +43,8 @@ Preferred source: Kenney official assets. Kenney packs listed below are Creative
 ## Not Bundled
 
 - Kenney Tower Defense Kit remains an optional future 3D reference pack. Do not include large source files in the APK unless converted and optimized.
-- No music loop is bundled yet. The music setting remains persisted for future use, and `AudioRouting.shouldPlayMusic` requires a real music asset before playback.
+- No music loop is bundled yet. The music setting remains persisted, `AndroidGameMusicPlayer` looks for `audio/music/music_loop.ogg`, and `AudioRouting.shouldPlayMusic` requires a real music asset before playback.
+- Kenney Music Jingles (`https://kenney.nl/assets/music-jingles`) is verified as Creative Commons CC0 and is safe as a future source for short stingers. A lightweight loop should preferably come from Kenney Music Loops in the Kenney All-in-1 bundle, then be copied as `app/src/main/assets/audio/music/music_loop.ogg` after local review.
 
 ## Folder Layout
 
@@ -116,5 +117,13 @@ Audio:
 
 - `GameVisualAssets.load` reads assets from `app/src/main/assets` and returns `null` for missing files.
 - `IsoRenderer` uses Kenney sprites when present and falls back to project-authored Canvas shapes when absent or when high contrast mode should favor clear generated shapes.
+- Iteration 8 adds extra Canvas polish around those assets: deeper tile side faces, sprite shadows, better tower/enemy anchoring, projectile origin offsets, and stronger map ambience.
 - `AndroidGameSoundPlayer` attempts `SoundPool` asset playback first and falls back to Android generated tones if the clip is missing, not yet loaded, or unavailable.
+- `AndroidGameMusicPlayer` attempts looping MediaPlayer playback only when `audio/music/music_loop.ogg` exists and the persisted music setting is enabled; otherwise it stays silent.
 - `GameAssetCatalog` and `AudioRouting` expose pure logic for fallback and route tests.
+
+## Iteration 8 Visual QA Notes
+
+- Campaign and daily screens should use the same fantasy-tech visual language as gameplay: dark circuit backgrounds, teal/gold/violet accents, route/node depth, and clear locked/current/completed states.
+- Daily Challenge should remain a special entry point, not a separate renderer. Actual daily runs go through `GameScreen` and `IsoRenderer`.
+- Keep high contrast mode generated-shape-first so enemy/tower distinction remains readable even if decorative sprites are less visible.

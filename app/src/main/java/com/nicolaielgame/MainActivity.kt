@@ -30,6 +30,7 @@ import com.nicolaielgame.game.model.DailyChallengeRules
 import com.nicolaielgame.game.model.DifficultyMode
 import com.nicolaielgame.game.model.GameRunResult
 import com.nicolaielgame.game.model.LevelCatalog
+import com.nicolaielgame.game.systems.AndroidGameMusicPlayer
 import com.nicolaielgame.game.systems.AndroidGameSoundPlayer
 import com.nicolaielgame.ui.menu.DailyChallengeScreen
 import com.nicolaielgame.ui.game.GameScreen
@@ -88,6 +89,7 @@ private fun DenicolaielApp(preferences: GamePreferences) {
     )
     val context = LocalContext.current
     val soundPlayer = remember { AndroidGameSoundPlayer(context) }
+    val musicPlayer = remember { AndroidGameMusicPlayer(context) }
     val scope = rememberCoroutineScope()
     var screen by rememberSaveable { mutableStateOf(RootScreen.ProfileSelect) }
     var selectedLevelId by rememberSaveable { mutableStateOf(LevelCatalog.firstLevel.id) }
@@ -105,12 +107,19 @@ private fun DenicolaielApp(preferences: GamePreferences) {
         action()
     }
 
-    DisposableEffect(soundPlayer) {
-        onDispose { soundPlayer.release() }
+    DisposableEffect(soundPlayer, musicPlayer) {
+        onDispose {
+            soundPlayer.release()
+            musicPlayer.release()
+        }
     }
 
     LaunchedEffect(settings.soundEnabled) {
         soundPlayer.enabled = settings.soundEnabled
+    }
+
+    LaunchedEffect(settings.musicEnabled) {
+        musicPlayer.setEnabled(settings.musicEnabled)
     }
 
     LaunchedEffect(settings.lastDifficulty) {
@@ -236,12 +245,12 @@ private fun DenicolaielApp(preferences: GamePreferences) {
                 bestScore = activeDailyDateKey?.let { dateKey ->
                     DailyChallengeProgress.bestFor(dailyBests, dateKey, progress.activeProfile)?.score ?: 0
                 } ?: progress.bestScoreForLevel(selectedLevel.id),
-                showGrid = settings.showGrid,
-                screenShakeEnabled = settings.screenShakeEnabled,
-                damageNumbersEnabled = settings.damageNumbersEnabled,
-                highContrastMode = settings.highContrastMode,
-                fpsCounterEnabled = settings.fpsCounterEnabled,
+                settings = settings,
+                runBadge = activeDailyDateKey?.let { "Daily" },
                 soundPlayer = soundPlayer,
+                onSettingsChanged = { nextSettings ->
+                    scope.launch { preferences.saveSettings(nextSettings) }
+                },
                 onBackToMenu = {
                     soundPlayer.buttonClick()
                     screen = if (activeDailyDateKey == null) RootScreen.LevelSelect else RootScreen.DailyChallenge

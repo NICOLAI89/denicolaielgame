@@ -38,7 +38,7 @@ data class GameState(
     val abilities: AbilityState = AbilityState(),
     val pathPreview: List<GridCell> = emptyList(),
     val selectedCell: GridCell? = null,
-    val selectedTowerType: TowerType = TowerType.Basic,
+    val selectedTowerType: TowerType? = TowerType.Basic,
     val selectedTowerId: Int? = null,
     val rangePreview: RangePreview? = null,
     val placementMessage: String = "Tap a buildable tile to place a tower.",

@@ -1,6 +1,8 @@
 package com.nicolaielgame.ui.menu
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +52,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -109,6 +112,12 @@ fun SettingsScreen(
                         checked = settings.fpsCounterEnabled,
                         onCheckedChange = { onSettingsChanged(settings.copy(fpsCounterEnabled = it)) },
                     )
+                    SettingRow(
+                        icon = R.drawable.ic_ui_campaign,
+                        label = "Auto-start waves",
+                        checked = settings.autoStartWavesEnabled,
+                        onCheckedChange = { onSettingsChanged(settings.copy(autoStartWavesEnabled = it)) },
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(14.dp))
@@ -119,7 +128,7 @@ fun SettingsScreen(
             ) {
                 Text("Reset Active Profile")
             }
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(18.dp))
             OutlinedButton(
                 onClick = onBack,
                 modifier = Modifier.fillMaxWidth(),

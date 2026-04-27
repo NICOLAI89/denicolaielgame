@@ -153,7 +153,6 @@ class IsoRenderer(
     ) {
         val center = cellCenter(cell, layout)
         val tile = diamondPath(center, layout.tileWidth, layout.tileHeight)
-        val side = diamondPath(center + Offset(0f, layout.tileHeight * 0.18f), layout.tileWidth, layout.tileHeight)
         val isPath = cell in state.pathPreview
         val isLocked = cell in map.buildLockedCells
         val isSelected = state.selectedCell == cell
@@ -166,7 +165,22 @@ class IsoRenderer(
             else -> if (highContrast) Color(0xFF244E5E) else ArcanePalette.TileTop
         }
 
-        drawPath(side, ArcanePalette.TileSide.copy(alpha = 0.92f))
+        drawTileDepthFaces(
+            center = center,
+            width = layout.tileWidth,
+            height = layout.tileHeight,
+            depth = layout.tileHeight * 0.32f,
+            leftColor = if (highContrast) Color(0xFF0A2830) else Color(0xFF0B2B2B),
+            rightColor = if (highContrast) Color(0xFF0F3740) else ArcanePalette.TileSide,
+        )
+        drawPath(
+            diamondPath(
+                center + Offset(0f, layout.tileHeight * 0.31f),
+                layout.tileWidth * 0.92f,
+                layout.tileHeight * 0.88f,
+            ),
+            Color.Black.copy(alpha = 0.14f),
+        )
         drawPath(tile, baseColor)
         if (!highContrast) {
             val tileAsset = when {
@@ -180,7 +194,7 @@ class IsoRenderer(
                 val assetHeight = assetWidth * image.height / image.width
                 drawAnchoredImage(
                     image = image,
-                    anchor = center + Offset(0f, layout.tileHeight * 0.56f),
+                    anchor = center + Offset(0f, layout.tileHeight * 0.52f),
                     width = assetWidth,
                     height = assetHeight,
                     alpha = if (isLocked && cell != map.base && cell != map.spawn) 0.52f else 0.92f,
@@ -291,19 +305,23 @@ class IsoRenderer(
         val h = layout.tileHeight
         val fireFlash = (tower.cooldown / tower.fireInterval).coerceIn(0f, 1f)
 
-        drawOval(
-            color = Color.Black.copy(alpha = 0.32f),
-            topLeft = Offset(center.x - w * 0.25f, center.y - h * 0.02f),
-            size = Size(w * 0.5f, h * 0.24f),
+        drawSpriteShadow(center + Offset(w * 0.04f, h * 0.12f), w * 0.62f, h * 0.34f, 0.38f)
+        drawPath(
+            diamondPath(center + Offset(0f, h * 0.12f), w * 0.48f, h * 0.28f),
+            Color.Black.copy(alpha = 0.24f),
+        )
+        drawPath(
+            diamondPath(center + Offset(0f, h * 0.05f), w * 0.44f, h * 0.25f),
+            tower.type.primaryColor.copy(alpha = if (highContrast) 0.98f else 0.72f),
         )
 
         val towerAsset = if (highContrast) null else assets.tower(tower.type)
         if (towerAsset != null) {
-            val assetWidth = w * if (tower.type == TowerType.Sniper) 0.76f else 0.82f
+            val assetWidth = w * if (tower.type == TowerType.Sniper) 0.88f else 0.96f
             val assetHeight = assetWidth * towerAsset.height / towerAsset.width
             drawAnchoredImage(
                 image = towerAsset,
-                anchor = center + Offset(0f, h * 0.08f),
+                anchor = center + Offset(0f, h * 0.18f),
                 width = assetWidth,
                 height = assetHeight,
             )
@@ -315,50 +333,50 @@ class IsoRenderer(
             )
         } else {
             when (tower.type) {
-            TowerType.Basic -> {
-                drawRoundRect(
-                    color = tower.type.primaryColor,
-                    topLeft = Offset(center.x - w * 0.16f, center.y - h * 0.72f),
-                    size = Size(w * 0.32f, h * 0.68f),
-                    cornerRadius = CornerRadius(8f, 8f),
-                )
-                drawCircle(
-                    color = tower.type.accentColor,
-                    radius = h * 0.16f,
-                    center = Offset(center.x, center.y - h * 0.66f),
-                )
-            }
+                TowerType.Basic -> {
+                    drawRoundRect(
+                        color = tower.type.primaryColor,
+                        topLeft = Offset(center.x - w * 0.16f, center.y - h * 0.72f),
+                        size = Size(w * 0.32f, h * 0.68f),
+                        cornerRadius = CornerRadius(8f, 8f),
+                    )
+                    drawCircle(
+                        color = tower.type.accentColor,
+                        radius = h * 0.16f,
+                        center = Offset(center.x, center.y - h * 0.66f),
+                    )
+                }
 
-            TowerType.Sniper -> {
-                drawRoundRect(
-                    color = tower.type.primaryColor,
-                    topLeft = Offset(center.x - w * 0.11f, center.y - h * 0.92f),
-                    size = Size(w * 0.22f, h * 0.86f),
-                    cornerRadius = CornerRadius(7f, 7f),
-                )
-                drawLine(
-                    color = tower.type.accentColor,
-                    start = Offset(center.x, center.y - h * 1.02f),
-                    end = Offset(center.x, center.y - h * 0.52f),
-                    strokeWidth = 5f,
-                )
-            }
+                TowerType.Sniper -> {
+                    drawRoundRect(
+                        color = tower.type.primaryColor,
+                        topLeft = Offset(center.x - w * 0.11f, center.y - h * 0.92f),
+                        size = Size(w * 0.22f, h * 0.86f),
+                        cornerRadius = CornerRadius(7f, 7f),
+                    )
+                    drawLine(
+                        color = tower.type.accentColor,
+                        start = Offset(center.x, center.y - h * 1.02f),
+                        end = Offset(center.x, center.y - h * 0.52f),
+                        strokeWidth = 5f,
+                    )
+                }
 
-            TowerType.Frost -> {
-                drawRoundRect(
-                    color = tower.type.primaryColor,
-                    topLeft = Offset(center.x - w * 0.15f, center.y - h * 0.62f),
-                    size = Size(w * 0.3f, h * 0.58f),
-                    cornerRadius = CornerRadius(9f, 9f),
-                )
-                drawCircle(
-                    color = tower.type.accentColor.copy(alpha = 0.88f),
-                    radius = h * 0.22f,
-                    center = Offset(center.x, center.y - h * 0.78f),
-                    style = Stroke(width = 4f),
-                )
+                TowerType.Frost -> {
+                    drawRoundRect(
+                        color = tower.type.primaryColor,
+                        topLeft = Offset(center.x - w * 0.15f, center.y - h * 0.62f),
+                        size = Size(w * 0.3f, h * 0.58f),
+                        cornerRadius = CornerRadius(9f, 9f),
+                    )
+                    drawCircle(
+                        color = tower.type.accentColor.copy(alpha = 0.88f),
+                        radius = h * 0.22f,
+                        center = Offset(center.x, center.y - h * 0.78f),
+                        style = Stroke(width = 4f),
+                    )
+                }
             }
-        }
         }
         drawCircle(
             color = ArcanePalette.WarningGold,
@@ -394,25 +412,21 @@ class IsoRenderer(
         val center = gridToScreen(enemy.row, enemy.col, layout)
         val radius = layout.tileHeight * 0.23f * enemy.type.sizeScale
         val healthPercent = (enemy.health / enemy.maxHealth).coerceIn(0f, 1f)
-        val bodyCenter = center - Offset(0f, radius * 0.25f)
+        val bodyCenter = center - Offset(0f, radius * 0.42f)
 
-        drawOval(
-            color = Color.Black.copy(alpha = 0.3f),
-            topLeft = Offset(center.x - radius * 1.2f, center.y + radius * 0.45f),
-            size = Size(radius * 2.4f, radius * 0.65f),
-        )
+        drawSpriteShadow(center + Offset(radius * 0.18f, radius * 0.48f), radius * 2.65f, radius * 0.72f, 0.34f)
         val enemyAsset = if (highContrast) null else assets.enemy(enemy.type)
         if (enemyAsset != null) {
             val scale = when {
-                enemy.type.isBoss -> 3.85f
-                enemy.type == EnemyType.Swarm -> 2.65f
-                else -> 3.15f
+                enemy.type.isBoss -> 3.55f
+                enemy.type == EnemyType.Swarm -> 2.45f
+                else -> 2.95f
             }
             val assetWidth = radius * scale
             val assetHeight = assetWidth * enemyAsset.height / enemyAsset.width
             drawAnchoredImage(
                 image = enemyAsset,
-                anchor = center + Offset(0f, radius * 1.16f),
+                anchor = center + Offset(0f, radius * 0.78f),
                 width = assetWidth,
                 height = assetHeight,
             )
@@ -584,8 +598,8 @@ class IsoRenderer(
             val beamTarget = tower.lastTargetEnemyId?.let { enemiesById[it] } ?: return@forEach
             if (tower.aimBeamTimeRemaining <= 0f && tower.id != state.selectedTowerId) return@forEach
 
-            val start = cellCenter(tower.cell, layout) - Offset(0f, layout.tileHeight * 0.78f)
-            val end = gridToScreen(beamTarget.row, beamTarget.col, layout) - Offset(0f, layout.tileHeight * 0.24f)
+            val start = towerFirePoint(tower, layout)
+            val end = enemyCenterPoint(beamTarget, layout)
             val selectedBoost = if (tower.id == state.selectedTowerId) 1.25f else 1f
             val pulse = (tower.aimBeamTimeRemaining / 0.18f).coerceIn(0.35f, 1f)
 
@@ -668,8 +682,8 @@ class IsoRenderer(
         layout: IsoLayout,
     ) {
         val target = enemies.firstOrNull { it.id == projectile.targetEnemyId }
-        val current = gridToScreen(projectile.row, projectile.col, layout)
-        val targetOffset = target?.let { gridToScreen(it.row, it.col, layout) } ?: current
+        val current = gridToScreen(projectile.row, projectile.col, layout) - Offset(0f, layout.tileHeight * 0.54f)
+        val targetOffset = target?.let { enemyCenterPoint(it, layout) } ?: current
         val glowWidth = when (projectile.towerType) {
             TowerType.Basic -> 3.2f
             TowerType.Sniper -> 5.2f
@@ -735,6 +749,24 @@ class IsoRenderer(
         )
     }
 
+    private fun towerFirePoint(tower: Tower, layout: IsoLayout): Offset {
+        return cellCenter(tower.cell, layout) - Offset(
+            x = 0f,
+            y = layout.tileHeight * when (tower.type) {
+                TowerType.Basic -> 0.78f
+                TowerType.Sniper -> 0.94f
+                TowerType.Frost -> 0.82f
+            },
+        )
+    }
+
+    private fun enemyCenterPoint(enemy: Enemy, layout: IsoLayout): Offset {
+        return gridToScreen(enemy.row, enemy.col, layout) - Offset(
+            x = 0f,
+            y = layout.tileHeight * if (enemy.type.isBoss) 0.42f else 0.34f,
+        )
+    }
+
     private fun diamondPath(center: Offset, width: Float, height: Float): Path {
         return Path().apply {
             moveTo(center.x, center.y - height / 2f)
@@ -743,6 +775,65 @@ class IsoRenderer(
             lineTo(center.x - width / 2f, center.y)
             close()
         }
+    }
+
+    private fun DrawScope.drawTileDepthFaces(
+        center: Offset,
+        width: Float,
+        height: Float,
+        depth: Float,
+        leftColor: Color,
+        rightColor: Color,
+    ) {
+        val top = Offset(center.x, center.y - height / 2f)
+        val right = Offset(center.x + width / 2f, center.y)
+        val bottom = Offset(center.x, center.y + height / 2f)
+        val left = Offset(center.x - width / 2f, center.y)
+        val bottomLower = bottom + Offset(0f, depth)
+        val rightLower = right + Offset(0f, depth)
+        val leftLower = left + Offset(0f, depth)
+
+        val rightFace = Path().apply {
+            moveTo(right.x, right.y)
+            lineTo(bottom.x, bottom.y)
+            lineTo(bottomLower.x, bottomLower.y)
+            lineTo(rightLower.x, rightLower.y)
+            close()
+        }
+        val leftFace = Path().apply {
+            moveTo(bottom.x, bottom.y)
+            lineTo(left.x, left.y)
+            lineTo(leftLower.x, leftLower.y)
+            lineTo(bottomLower.x, bottomLower.y)
+            close()
+        }
+
+        drawPath(rightFace, rightColor.copy(alpha = 0.9f))
+        drawPath(leftFace, leftColor.copy(alpha = 0.96f))
+        drawLine(
+            color = Color.White.copy(alpha = 0.08f),
+            start = top,
+            end = right,
+            strokeWidth = 1.2f,
+        )
+    }
+
+    private fun DrawScope.drawSpriteShadow(
+        center: Offset,
+        width: Float,
+        height: Float,
+        alpha: Float,
+    ) {
+        drawOval(
+            color = Color.Black.copy(alpha = alpha),
+            topLeft = Offset(center.x - width / 2f, center.y - height / 2f),
+            size = Size(width, height),
+        )
+        drawOval(
+            color = ArcanePalette.CircuitTeal.copy(alpha = alpha * 0.18f),
+            topLeft = Offset(center.x - width * 0.42f, center.y - height * 0.4f),
+            size = Size(width * 0.84f, height * 0.72f),
+        )
     }
 
     private fun DrawScope.drawAnchoredImage(
